@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 Piper control node for the Piper robot.
 """

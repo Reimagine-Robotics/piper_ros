@@ -47,10 +47,6 @@ echo "🔧 Installing system dependencies (can-utils)"
 run_step sudo apt install -y can-utils
 echo "✅ can-utils installed."
 
-echo "🔧 Installing 'piper_ros' in editable mode"
-run_step pip install -e .
-echo "✅ piper_ros installed."
-
 echo "🔧 Installing 'piper_control' in editable mode (DEV ONLY)"
 run_step pip install -e ../piper_control
 echo "✅ piper_control installed."

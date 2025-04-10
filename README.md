@@ -77,3 +77,9 @@ pattern:
     colcon build --symlink-install
     source install/setup.bash
     ```
+
+4.  Run the wrapper script rather than the node directly:
+
+      ```bash
+      ros2 run piper_control_node run_piper_control_node
+      ```

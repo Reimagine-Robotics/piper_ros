@@ -11,4 +11,5 @@ dependencies:
     - numpy
     - dm-robotics-transformations
     - PyYAML
+    - -e .
     # piper_control  # TODO(jscholz) Uncomment when released on PyPI
