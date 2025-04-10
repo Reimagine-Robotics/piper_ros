@@ -1,0 +1,14 @@
+name: piper_control_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - ipykernel
+  - pip
+  - pip:
+    - pyink
+    - numpy
+    - dm-robotics-transformations
+    - PyYAML
+    # piper_control  # TODO(jscholz) Uncomment when released on PyPI

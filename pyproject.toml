@@ -1,0 +1,27 @@
+[project]
+name = "piper_control"
+version = "0.1.0"
+description = "A ROS2 interface to AgileX Piper arms."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "numpy",
+    "dm-robotics-transformations",  # TODO(jscholz) replace with pure-python fork
+    "piper_control",  # TODO(jscholz) add to PyPI index
+    "piper_sdk>=0.2.19",
+]
+
+[project.urls]
+Repository = "https://github.com/Reimagine-Robotics/piper_ros"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

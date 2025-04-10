@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "ms-python.black-formatter",  // also requires pyink installed.
+        "ms-python.pylint",
+        "ms-python.isort",
+        "davidanson.vscode-markdownlint",
+        "yzhang.markdown-all-in-one"
+    ]
+}

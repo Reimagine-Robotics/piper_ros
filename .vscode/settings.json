@@ -1,0 +1,63 @@
+{
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "files.associations": {
+        ".pylintrc": "ini"
+    },
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "[python]": {
+        "editor.rulers": [80],
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.detectIndentation": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+        },
+    },
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportShadowedImports": false
+    },
+    "python.analysis.typeCheckingMode": "basic",
+    "python.terminal.activateEnvironment": true,
+    "black-formatter.path": ["pyink"],
+    "black-formatter.args": [
+        "--pyink-indentation=2",
+        "--line-length", "80",
+    ],
+    "pylint.args": [
+        "--rcfile=.vscode/pylintrc"
+    ],
+    "isort.args":["--profile", "black"],
+    "[markdown]": {
+        "editor.rulers": [80],
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+        "editor.formatOnSave": true,
+    },
+    "markdownlint.config": {
+        "default": true,
+        "MD013": {
+            "stern": true
+        },
+        "MD030": {
+            "ol_multi": 2,
+            "ol_single": 2,
+            "ul_multi": 3,
+            "ul_single": 3
+        }
+    },
+    "files.watcherExclude": {
+        "**/.git/**": true
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/*.egg-info": true
+    },
+    "git.ignoreLimitWarning": true,
+}
