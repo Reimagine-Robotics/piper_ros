@@ -16,19 +16,13 @@ setup(
             "share/" + package_name + "/launch",
             ["launch/puppeteering_launch.py"],
         ),
-        # Define entry point wrapper to enable usage in Conda environments:
-        (
-            "lib/" + package_name,
-            ["scripts/run_piper_puppeteering_node"],
-        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="jscholz",
     maintainer_email="jscholz@reimaginerobotics.ai",
-    description="TODO: Package description",
-    license="TODO: License declaration",
-    tests_require=["pytest"],
+    description="Puppeteering node for the Piper robot.",
+    license="MIT",
     entry_points={
         "console_scripts": [
             "piper_puppeteering_node = piper_puppeteering_node.puppeteering_node:main",

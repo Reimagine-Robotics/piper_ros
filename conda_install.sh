@@ -25,11 +25,9 @@ run_step() {
   fi
 }
 
-# Prompt for sudo early and keep it alive
-echo "🔐 Requesting sudo access upfront..."
-sudo -v
-# Keep-alive: refresh sudo timestamp every minute in the background
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+echo "🔧 Installing system dependencies (can-utils)"
+run_step sudo apt install -y can-utils
+echo "✅ can-utils installed."
 
 echo "🔧 Updating/creating conda environment: $ENV_NAME"
 run_step conda env update -n "$ENV_NAME" --file "$YAML_FILE" --prune
@@ -43,13 +41,13 @@ echo "🔧 Activating environment: $ENV_NAME"
 run_step conda activate "$ENV_NAME"
 echo "✅ Environment '$ENV_NAME' activated."
 
-echo "🔧 Installing system dependencies (can-utils)"
-run_step sudo apt install -y can-utils
-echo "✅ can-utils installed."
-
 echo "🔧 Installing 'piper_control' in editable mode (DEV ONLY)"
 run_step pip install -e ../piper_control
 echo "✅ piper_control installed."
+
+echo "🔧 Installing colcon in conda env to fix '/usr/bin/env python' bug"
+run_step pip install colcon-common-extensions
+echo "✅ colcon-common-extensions installed."
 
 echo "🔧 Building ROS workspace with colcon"
 run_step colcon build --symlink-install
@@ -63,6 +61,6 @@ cat <<EOF
 To get started:
   conda activate $ENV_NAME
   source install/setup.bash
-  ros2 run piper_control_node run_piper_control_node
+  ros2 run piper_control_node piper_control_node
 
 EOF

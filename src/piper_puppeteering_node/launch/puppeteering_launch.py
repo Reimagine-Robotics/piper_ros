@@ -1,7 +1,7 @@
 """Launches two robots on can0 and can1 and puppeteering 0 -> 1.
 
 Usage (from the root of the ROS workspace):
-ros2 launch piper_puppeteering_node puppeteering_launch.py
+>>> ros2 launch piper_puppeteering_node puppeteering_launch.py
 """
 
 from launch import LaunchDescription
@@ -14,21 +14,21 @@ def generate_launch_description():
       [
           Node(
               package="piper_control_node",
-              executable="run_piper_control_node",
+              executable="piper_control_node",
               name="piper_control_node_0",
               parameters=[{"namespace": "robot0"}, {"can_port": "can0"}],
           ),
           Node(
               package="piper_control_node",
-              executable="run_piper_control_node",
+              executable="piper_control_node",
               name="piper_control_node_1",
               parameters=[{"namespace": "robot1"}, {"can_port": "can1"}],
           ),
           Node(
               package="piper_puppeteering_node",
-              executable="run_piper_puppeteering_node",
+              executable="piper_puppeteering_node",
               name="piper_puppeteering_node",
-              parameters=[{"puppet_ns": "robot0"}, {"puppeteer_ns": "robot1"}],
+              parameters=[{"puppet_ns": "robot1"}, {"puppeteer_ns": "robot0"}],
           ),
           # Delay to allow nodes to start
           TimerAction(

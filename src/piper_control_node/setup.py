@@ -26,11 +26,6 @@ setup(
             ["resource/" + package_name],
         ),
         ("share/" + package_name, ["package.xml"]),
-        # Define entry point wrapper to enable usage in Conda environments:
-        (
-            "lib/" + package_name,
-            ["scripts/run_piper_control_node"],
-        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -38,7 +33,6 @@ setup(
     maintainer_email="jscholz@reimaginerobotics.ai",
     description="A Python interface to the Piper robot.",
     license="MIT",
-    tests_require=["pytest"],
     entry_points={
         "console_scripts": [
             "piper_control_node = piper_control_node.piper_control_node:main",

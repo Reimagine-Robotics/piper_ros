@@ -1,15 +1,12 @@
 """Simple puppeteering node that relays joint positions and gripper state."""
 
-# Disable import linting for this file because it's a ROS2 node.
-# pylint: disable=wrong-import-position
-# pyright: reportMissingImports=false
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-# pylint: enable=wrong-import-position
 
 
 class PuppeteeringNode(Node):
+  """ROS2 node for puppeteering the Piper robot."""
 
   def __init__(self):
     super().__init__("piper_puppeteering_node")

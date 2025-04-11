@@ -36,50 +36,15 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
   This script performs edittable installs (i.e. `pip -e`) of piper_control and
   piper_ros so they can be developed together.
 
-### 🔧 Creating Conda-Compatible ROS2 Nodes
+### 🔧 Gotchas
 
-ROS2 nodes use the system-wide python in /usr/bin/python by default. To trick
-ROS into using the overlaid python version in a Conda env we need the following
-pattern:
+#### Creating Conda-Compatible ROS2 Nodes
 
-1.  Create a my_package/scripts/run_my_package file containing the following
-   (modify accordingly):
+When using a Conda environment, ROS2 nodes may fail to discover packages
+installed in your active environment (https://github.com/ros2/ros2/issues/1469)
 
-    ```python
-    #!/usr/bin/env python
+The solution that worked for us was to install colcon into the active conda env:
 
-    from piper_control_node.piper_control_node import main
-
-    if __name__ == "__main__":
-    main()
-    ```
-
-      The key part of this script is `#!/usr/bin/env python` which forces ros to
-      run from the python defined in the bash env, rather than the system
-      install.
-
-2.  Add `run_my_package` to the package's setup.py:
-
-    ```python
-    data_files=[
-    ...
-    (
-        "lib/" + package_name,
-        ["scripts/run_piper_puppeteering_node"],
-    ),
-    ...
-    ]
-    ```
-
-3.  Build as usual:
-
-    ```bash
-    colcon build --symlink-install
-    source install/setup.bash
-    ```
-
-4.  Run the wrapper script rather than the node directly:
-
-      ```bash
-      ros2 run piper_control_node run_piper_control_node
-      ```
+  ```bash
+  pip install colcon-common-extensions
+  ```

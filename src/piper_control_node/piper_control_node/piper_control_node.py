@@ -179,9 +179,14 @@ class PiperControlNode(Node):
       self, request: Trigger.Request, response: Trigger.Response
   ) -> Trigger.Response:
     del request
-    self.robot.reset()
-    response.success = True
-    response.message = "Robot reset."
+    try:
+      self.robot.reset()
+      response.success = True
+      response.message = "Robot reset."
+    except RuntimeError as e:
+      print(f"Error resetting robot: {e}")
+      response.message = "Robot not reset."
+      response.success = False
     return response
 
   def handle_enable(
