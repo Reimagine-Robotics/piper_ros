@@ -1,6 +1,7 @@
 """Simple puppeteering node that relays joint positions and gripper state."""
 
 import rclpy
+from piper_control import piper_control
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
@@ -60,7 +61,7 @@ class PuppeteeringNode(Node):
   def gripper_callback(self, msg: JointState) -> None:
     """Callback function for puppeteer gripper state."""
     print(f"Relaying gripper state: {msg}")
-    msg.effort = [1.0]  # force maximum effort.
+    msg.effort = [piper_control.GRIPPER_EFFORT_MAX]
     self.puppet_gripper_pub.publish(msg)
 
 

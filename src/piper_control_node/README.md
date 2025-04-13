@@ -91,8 +91,8 @@ ros2 topic pub /piper/cartesian_position_cmd geometry_msgs/Pose "{position: {x:
 Control the gripper position and effort using the new `JointState` message:
 
 ```bash
-ros2 topic pub /piper/gripper_control sensor_msgs/JointState "{position:
-[0.05], effort: [20.0]}"
+ros2 topic pub /piper/gripper_cmd sensor_msgs/JointState "{position:
+[0.05], effort: [2.0]}"
 ```
 
 ### Viewing the Joint and Gripper States
