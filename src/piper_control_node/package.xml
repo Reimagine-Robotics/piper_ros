@@ -16,7 +16,7 @@
   <depend>numpy</depend>
   <depend>piper_control</depend>
   <depend>piper_sdk</depend>
-  <depend>dm_robotics_transformations</depend>
+  <depend>r2-transformations</depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

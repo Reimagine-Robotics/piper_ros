@@ -8,8 +8,8 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "numpy",
-    "dm-robotics-transformations",  # TODO(jscholz) replace with pure-python fork
-    "piper_control",  # TODO(jscholz) add to PyPI index
+    "r2-transformations",
+    "piper_control",
     "piper_sdk>=0.2.19",
 ]
 
