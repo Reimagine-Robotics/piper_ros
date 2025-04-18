@@ -28,7 +28,7 @@ def generate_launch_description():
               package="piper_puppeteering_node",
               executable="piper_puppeteering_node",
               name="piper_puppeteering_node",
-              parameters=[{"puppet_ns": "robot1"}, {"puppeteer_ns": "robot0"}],
+              parameters=[{"puppet_ns": "robot0"}, {"puppeteer_ns": "robot1"}],
           ),
           # Delay to allow nodes to start
           TimerAction(

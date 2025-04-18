@@ -107,7 +107,17 @@ class PiperControlNode(Node):
   def joint_cmd_callback(self, msg):
     positions = msg.position
     self.get_logger().debug(f"Received joint positions: {positions}")
-    self.robot.set_joint_positions(positions)
+    # self.robot.set_joint_positions(positions)
+    # haxx
+    commands = [
+        piper_control.MitJointMoveCommand(
+            ji,
+            target_pos=msg.position[ji],
+            p_gain=20,
+        )
+        for ji in range(len(positions))
+    ]
+    self.robot.move_to_joint_pos_mit(commands, apply_sign_flip=True)
 
   def publish_joint_states(self):
     joint_positions = self.robot.get_joint_positions()
@@ -180,7 +190,11 @@ class PiperControlNode(Node):
   ) -> Trigger.Response:
     del request
     try:
-      self.robot.reset()
+      # haxx
+      self.robot.reset(
+          arm_controller=piper_control.ArmController.MIT,
+          move_mode=piper_control.MoveMode.MIT,
+      )
       response.success = True
       response.message = "Robot reset."
     except RuntimeError as e:
