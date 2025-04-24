@@ -13,8 +13,8 @@
 
 set -e  # Exit on error
 
-ENV_NAME="piper_ros_env"
-YAML_FILE="piper_ros_env.yaml"
+ENV_NAME="piper_ros"
+YAML_FILE="piper_ros.yaml"
 
 run_step() {
   "$@"
