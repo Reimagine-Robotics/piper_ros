@@ -1,4 +1,4 @@
-name: piper_control_env
+name: piper_ros
 channels:
   - conda-forge
   - defaults

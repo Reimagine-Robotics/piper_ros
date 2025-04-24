@@ -1,5 +1,5 @@
 [project]
-name = "piper_control"
+name = "piper_ros"
 version = "0.1.0"
 description = "A ROS2 interface to AgileX Piper arms."
 readme = "README.md"
