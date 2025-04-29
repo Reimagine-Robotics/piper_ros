@@ -113,7 +113,8 @@ class PiperControlNode(Node):
         piper_control.MitJointMoveCommand(
             ji,
             target_pos=msg.position[ji],
-            p_gain=20,
+            p_gain=5.0,
+            d_gain=1.0,
         )
         for ji in range(len(positions))
     ]
@@ -243,7 +244,11 @@ class PiperControlNode(Node):
       self, request: Trigger.Request, response: Trigger.Response
   ) -> Trigger.Response:
     del request
-    self.robot.set_joint_positions(piper_control.REST_POSITION)
+    # TODO(akhil, oleg): Decide on which control mode / API to use based on
+    # the current mode of the robot. This is taken care of by Oleg's parallel
+    # changes.
+    # self.robot.set_joint_positions(piper_control.REST_POSITION)
+    self.robot.gently_move_to_target(piper_control.REST_POSITION)
     response.success = True
     response.message = "Moved to REST position."
     return response
