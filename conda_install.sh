@@ -19,6 +19,7 @@ YAML_FILE="piper_ros.yaml"
 run_step() {
   "$@"
   local status=$?
+
   if [ $status -ne 0 ]; then
     echo "❌ Error: $* failed with status $status"
     exit $status
@@ -50,7 +51,16 @@ run_step pip install colcon-common-extensions
 echo "✅ colcon-common-extensions installed."
 
 echo "🔧 Building ROS workspace with colcon"
-run_step colcon build --symlink-install
+# run_step colcon build --symlink-install
+
+# Workaround 1 for '--symlink-install' choking on with python 3.12
+# run_step colcon build  # Will have to re-build every time you change code
+
+# Workaround 2 for '--symlink-install' choking on with python 3.12
+cd src/piper_control_node && pip install -e . && cd ../..
+cd src/piper_puppeteering_node && pip install -e . && cd ../..
+colcon build --packages-skip piper_control_node piper_puppeteering_node --symlink-install
+
 echo "✅ ROS workspace built."
 
 # Final usage reminders
