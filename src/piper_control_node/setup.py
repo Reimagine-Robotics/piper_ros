@@ -12,6 +12,7 @@
 # This allows us to `ros2 run piper_control_node run_piper_control_node` while
 # correctly using the Conda environment for dependencies.
 
+import os
 from setuptools import find_packages, setup
 
 package_name = "piper_control_node"
@@ -26,6 +27,10 @@ setup(
             ["resource/" + package_name],
         ),
         ("share/" + package_name, ["package.xml"]),
+        (
+            os.path.join("share", package_name, "data"),
+            ["piper_control_node/teach_mode/piper_grav_comp.xml"],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
