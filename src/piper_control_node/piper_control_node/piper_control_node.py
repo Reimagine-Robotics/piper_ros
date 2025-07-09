@@ -110,6 +110,12 @@ class PiperControlNode(Node):
         Trigger, f"{self.namespace}/disable", self.handle_disable  # type: ignore
     )
     self.create_service(
+        Trigger, f"{self.namespace}/enable_gripper", self.handle_enable_gripper  # type: ignore
+    )
+    self.create_service(
+        Trigger, f"{self.namespace}/disable_gripper", self.handle_disable_gripper  # type: ignore
+    )
+    self.create_service(
         Trigger, f"{self.namespace}/get_status", self.handle_get_status  # type: ignore
     )
     self.create_service(
@@ -281,6 +287,19 @@ class PiperControlNode(Node):
     response.message = "Robot enabled."
     return response
 
+  def handle_enable_gripper(
+      self, request: Trigger.Request, response: Trigger.Response
+  ) -> Trigger.Response:
+    del request
+
+    piper_init.enable_gripper(self._robot)
+
+    self._gripper_controller.start()
+
+    response.success = True
+    response.message = "Gripper enabled."
+    return response
+
   def handle_disable(
       self, request: Trigger.Request, response: Trigger.Response
   ) -> Trigger.Response:
@@ -294,6 +313,19 @@ class PiperControlNode(Node):
 
     response.success = True
     response.message = "Robot disabled."
+    return response
+
+  def handle_disable_gripper(
+      self, request: Trigger.Request, response: Trigger.Response
+  ) -> Trigger.Response:
+    del request
+
+    self._gripper_controller.stop()
+
+    piper_init.disable_gripper(self._robot)
+
+    response.success = True
+    response.message = "Gripper disabled."
     return response
 
   def handle_get_status(
