@@ -2,22 +2,86 @@
 Piper control node for the Piper robot.
 """
 
+from __future__ import annotations
+
 import argparse
+import dataclasses
 import functools
 import os
 import signal
 
-from ament_index_python.packages import get_package_share_directory
 import rclpy
-
-from piper_control import piper_connect
-from piper_control import piper_init
-from piper_control import piper_interface
-from piper_control import piper_control
-
+from ament_index_python.packages import get_package_share_directory
+from piper_control import piper_connect, piper_control, piper_init, piper_interface
+from rclpy import logging
 from rclpy.node import Node
-from sensor_msgs.msg import JointState
-from std_srvs.srv import Trigger
+from sensor_msgs import msg as sensor_msgs
+from std_msgs import msg as std_msgs
+from std_srvs import srv as std_srvs
+
+
+@dataclasses.dataclass
+class JointCommand:
+  """Data class for joint commands.
+
+  Attributes:
+    positions: The joint positions to command.
+    velocities: The joint velocities to command.
+    efforts: The joint efforts to command.
+    kp_gains: P gains for the joint controller.
+    kd_gains: D gains for the joint controller.
+  """
+
+  positions: tuple[float, ...] = ()
+  velocities: tuple[float, ...] = ()
+  efforts: tuple[float, ...] = ()
+  kp_gains: tuple[float, ...] = ()
+  kd_gains: tuple[float, ...] = ()
+
+  @classmethod
+  def from_msg(
+      cls,
+      msg: std_msgs.Float64MultiArray,
+      logger: logging.RcutilsLogger | None = None,
+  ) -> JointCommand:
+    """Create a JointCommand from a Float64MultiArray message.
+
+    Args:
+      msg: The incoming joint command message containing positions, velocities,
+        or efforts. The message may also contain kp and kd gains. The msg.layout
+        contains information about how to split the command into positions,
+        velocities, efforts and gains.
+      logger: Optional logger to log warnings if the message is malformed.
+
+    Returns:
+      A JointCommand instance.
+    """
+    joint_command = cls()
+    layout = msg.layout
+    if not layout or not layout.dim:
+      raise ValueError(f"Invalid message layout for message: {msg}")
+
+    offset = layout.data_offset or 0
+    for dim in layout.dim:
+      if dim.label == "positions":
+        joint_command.positions = tuple(msg.data[offset : offset + dim.size])
+      elif dim.label == "velocities":
+        joint_command.velocities = tuple(msg.data[offset : offset + dim.size])
+      elif dim.label == "efforts":
+        joint_command.efforts = tuple(msg.data[offset : offset + dim.size])
+      elif dim.label == "kp_gains":
+        joint_command.kp_gains = tuple(msg.data[offset : offset + dim.size])
+      elif dim.label == "kd_gains":
+        joint_command.kd_gains = tuple(msg.data[offset : offset + dim.size])
+      else:
+        if logger:
+          logger.warning(
+              f"Unknown dimension label '{dim.label}' in message: {msg}"
+          )
+
+      offset += dim.size
+
+    return joint_command
 
 
 class PiperControlNode(Node):
@@ -75,12 +139,12 @@ class PiperControlNode(Node):
 
     # Joint control
     self.joint_state_pub = self.create_publisher(
-        JointState,
+        sensor_msgs.JointState,
         f"{self.namespace}/joint_states",
         qos_profile=10,
     )
     self.joint_command_sub = self.create_subscription(
-        JointState,
+        std_msgs.Float64MultiArray,
         f"{self.namespace}/joint_commands",
         self.joint_cmd_callback,
         qos_profile=10,
@@ -88,12 +152,12 @@ class PiperControlNode(Node):
 
     # Gripper control
     self.gripper_state_pub = self.create_publisher(
-        JointState,
+        sensor_msgs.JointState,
         f"{self.namespace}/gripper_state",
         qos_profile=10,
     )
     self.gripper_command_sub = self.create_subscription(
-        JointState,
+        sensor_msgs.JointState,
         f"{self.namespace}/gripper_command",
         self.gripper_cmd_callback,
         qos_profile=10,
@@ -101,25 +165,39 @@ class PiperControlNode(Node):
 
     # Service servers
     self.create_service(
-        Trigger, f"{self.namespace}/reset", self.handle_reset  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/reset",
+        self.handle_reset,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/enable", self.handle_enable  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/enable",
+        self.handle_enable,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/disable", self.handle_disable  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/disable",
+        self.handle_disable,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/enable_gripper", self.handle_enable_gripper  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/enable_gripper",
+        self.handle_enable_gripper,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/disable_gripper", self.handle_disable_gripper  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/disable_gripper",
+        self.handle_disable_gripper,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/get_status", self.handle_get_status  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/get_status",
+        self.handle_get_status,  # type: ignore
     )
     self.create_service(
-        Trigger, f"{self.namespace}/is_enabled", self.handle_is_enabled  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/is_enabled",
+        self.handle_is_enabled,  # type: ignore
     )
 
     self.get_logger().info(
@@ -138,12 +216,12 @@ class PiperControlNode(Node):
       from piper_control_node.teach_mode import teach_mode
 
       self.create_service(
-          Trigger,
+          std_srvs.Trigger,
           f"{self.namespace}/teach_mode_enable",
           self.handle_teach_mode_enable,  # type: ignore
       )
       self.create_service(
-          Trigger,
+          std_srvs.Trigger,
           f"{self.namespace}/teach_mode_disable",
           self.handle_teach_mode_disable,  # type: ignore
       )
@@ -178,10 +256,24 @@ class PiperControlNode(Node):
     piper_init.disable_arm(self._robot)
     piper_init.disable_gripper(self._robot)
 
-  def joint_cmd_callback(self, msg):
-    positions = list(msg.position)
-    velocities = list(msg.velocity)
-    efforts = list(msg.effort)
+  def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
+    """Handle incoming joint commands.
+
+    Args:
+      msg: The incoming joint command message containing positions, velocities,
+        or efforts. The message may also contain kp and kd gains. The msg.layout
+        contains information about how to split the command into positions,
+        velocities, efforts and gains.
+    """
+    try:
+      joint_command = JointCommand.from_msg(msg, self.get_logger())
+    except ValueError as e:
+      self.get_logger().warn(f"Invalid joint command message: {e}")
+      return
+
+    positions = list(joint_command.positions)
+    velocities = list(joint_command.velocities)
+    efforts = list(joint_command.efforts)
 
     if positions:
       if velocities or efforts:
@@ -190,7 +282,29 @@ class PiperControlNode(Node):
         )
 
       self.get_logger().debug(f"Received joint positions: {positions}")
-      self._arm_controller.command_joints(positions)
+      if joint_command.kp_gains:
+        kp_gains = list(joint_command.kp_gains)
+        if len(kp_gains) != len(positions):
+          self.get_logger().warn(
+              "Received joint positions with mismatched kp gains"
+          )
+          kp_gains = None
+      else:
+        kp_gains = None
+      if joint_command.kd_gains:
+        kd_gains = list(joint_command.kd_gains)
+        if len(kd_gains) != len(positions):
+          self.get_logger().warn(
+              "Received joint positions with mismatched kd gains"
+          )
+          kd_gains = None
+      else:
+        kd_gains = None
+      self._arm_controller.command_joints(
+          positions,
+          kp_gains=kp_gains,
+          kd_gains=kd_gains,
+      )
 
     elif velocities:
       self.get_logger().warn("Velocity actuation not currently supported")
@@ -211,13 +325,13 @@ class PiperControlNode(Node):
     joint_positions = self._robot.get_joint_positions()
     joint_velocities = self._robot.get_joint_velocities()
     joint_efforts = self._robot.get_joint_efforts()
-    msg = JointState()
+    msg = sensor_msgs.JointState()
     msg.position = list(joint_positions)
     msg.velocity = list(joint_velocities)
     msg.effort = list(joint_efforts)
     self.joint_state_pub.publish(msg)
 
-  def gripper_cmd_callback(self, msg: JointState) -> None:
+  def gripper_cmd_callback(self, msg: sensor_msgs.JointState) -> None:
     position = msg.position[0] if msg.position else 0.0
     effort = msg.effort[0] if msg.effort else 0.0
 
@@ -230,7 +344,7 @@ class PiperControlNode(Node):
   def publish_gripper_state(self):
     position, effort = self._robot.get_gripper_state()
 
-    msg = JointState()
+    msg = sensor_msgs.JointState()
     msg.position = [position]
     msg.effort = [effort]
 
@@ -240,8 +354,10 @@ class PiperControlNode(Node):
     )
 
   def handle_reset(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     try:
@@ -269,8 +385,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_enable(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     piper_init.enable_arm(
@@ -288,8 +406,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_enable_gripper(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     piper_init.enable_gripper(self._robot)
@@ -301,8 +421,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_disable(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     self._arm_controller.stop()
@@ -316,8 +438,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_disable_gripper(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     self._gripper_controller.stop()
@@ -329,8 +453,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_get_status(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
     status = self._robot.get_arm_status()
     response.success = True
@@ -338,8 +464,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_is_enabled(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
     is_enabled = self._robot.is_enabled()
     response.success = True
@@ -347,8 +475,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_teach_mode_enable(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     self._teach_mode_active = True
@@ -359,8 +489,10 @@ class PiperControlNode(Node):
     return response
 
   def handle_teach_mode_disable(
-      self, request: Trigger.Request, response: Trigger.Response
-  ) -> Trigger.Response:
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
     del request
 
     self._teach_mode_active = False
