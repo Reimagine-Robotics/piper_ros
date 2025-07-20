@@ -9,24 +9,46 @@ The generated set of grav comp torques is later used in teach_mode.py to fit a
 gravity model that can be used in any joint configuration.
 """
 
-from typing import Sequence
 import dataclasses
 import json
 import time
+from typing import Sequence
 
-from absl import app, flags
 import numpy as np
-
-from piper_control import piper_connect
-from piper_control import piper_init
-from piper_control import piper_interface
-from piper_control import piper_control
-
+from absl import app, flags
+from piper_control import piper_connect, piper_control, piper_init, piper_interface
 
 _OUT_PATH = flags.DEFINE_string(
     "out_path",
     "/tmp/grav_comp_samples.json",
     "The output path for the sampled gravity compensation torques.",
+)
+
+_CAN_PORT = flags.DEFINE_string(
+    "can_port",
+    "",
+    "The CAN port to use. Defaults to the first detected port.",
+)
+
+_MODE = flags.DEFINE_enum(
+    "mode",
+    "collect_data",
+    ["collect_poses", "collect_data"],
+    "Mode to run: 'collect_poses' for interactive collection of poses to visit,"
+    "'collect_data' for actual gravity compensation data collection.",
+)
+
+_POSES_PATH = flags.DEFINE_string(
+    "poses_path",
+    "/tmp/sample_poses.json",
+    "Path to load/save the sample poses JSON file.",
+)
+
+_ARM_ORIENTATION = flags.DEFINE_enum(
+    "arm_orientation",
+    "upright",
+    ["upright", "left", "right"],
+    "Arm mounting orientation: upright, left, or right.",
 )
 
 
@@ -150,12 +172,109 @@ class GravityTorqueSampler:
       ]
 
 
-def generate_samples(
-    robot: piper_interface.PiperInterface,
-    controller: piper_control.MitJointPositionController,
-) -> Sequence[GravityTorqueSample]:
+def get_rest_position_for_orientation(orientation: str) -> np.ndarray:
+  """Get the appropriate rest position based on arm orientation."""
+  if orientation == "upright":
+    return np.array(piper_control.REST_POSITION)
+  elif orientation in ["left", "right"]:
+    # Custom rest position for left/right mounted arms (3 significant figures)
+    return np.array([-1.66, 2.91, -2.74, 0.0545, -0.271, 0.0979])
+  else:
+    raise ValueError(f"Unknown arm orientation: {orientation}")
 
-  sample_poses = [
+
+def get_gravity_compensation_gains(
+    orientation: str,
+) -> tuple[np.ndarray, np.ndarray]:
+  """Get PD gains for gravity compensation based on arm orientation."""
+  if orientation == "upright":
+    # Original gains for upright/vertical orientation
+    p_gains = np.array([3.0, 15.0, 12.0, 3.0, 3.0, 2.0])
+    d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
+  elif orientation in ["left", "right"]:
+    # Gains for left/right mounted arms (may need tuning)
+    p_gains = np.array([10.0, 15.0, 12.0, 3.0, 3.0, 2.0])
+    d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
+  else:
+    raise ValueError(f"Unknown arm orientation: {orientation}")
+
+  return p_gains, d_gains
+
+
+def collect_poses_interactively(
+    robot: piper_interface.PiperInterface,
+) -> list[np.ndarray]:
+  """Interactive pose collection mode."""
+  print("=" * 60)
+  print("INTERACTIVE POSE COLLECTION MODE")
+  print("=" * 60)
+  print("Instructions:")
+  print("1. Manually move the robot arm to desired poses")
+  print("2. Press ENTER to capture the current pose")
+  print("3. Type 's' + ENTER to skip this pose (continue without capturing)")
+  print("4. Type 'q' + ENTER when done collecting poses")
+  print("5. The collected poses will be saved to:", _POSES_PATH.value)
+  print("=" * 60)
+
+  collected_poses = []
+
+  try:
+    while True:
+      joint_angles = np.array(robot.get_joint_positions())
+      print(f"Current joint angles: {joint_angles}")
+
+      # Simple input - will pause and wait for user
+      user_input = (
+          input("Press ENTER to capture, 's' to skip, or 'q' to quit: ")
+          .strip()
+          .lower()
+      )
+
+      if user_input == "q":
+        break
+      elif user_input == "s":
+        print("⏭️  Skipped this pose")
+        print("-" * 40)
+      else:  # Any other input (including empty) captures
+        collected_poses.append(joint_angles.copy())
+        print(f"✓ Captured pose {len(collected_poses)}!")
+        print(f"Pose: {joint_angles}")
+        print("-" * 40)
+
+  except KeyboardInterrupt:
+    print("\nInterrupted by user")
+
+  print("\nPose collection complete!")
+  print(f"Total collected poses: {len(collected_poses)}")
+
+  return collected_poses
+
+
+def save_poses_to_json(poses: list[np.ndarray], filename: str) -> None:
+  """Save poses to JSON file."""
+  poses_list = [pose.tolist() for pose in poses]
+  with open(filename, "w", encoding="utf-8") as f:
+    json.dump(poses_list, f, indent=2)
+  print(f"Poses saved to: {filename}")
+
+
+def load_poses_from_json(filename: str) -> list[np.ndarray]:
+  """Load poses from JSON file."""
+  try:
+    with open(filename, "r", encoding="utf-8") as f:
+      poses_list = json.load(f)
+    poses = [np.array(pose) for pose in poses_list]
+    print(f"Loaded {len(poses)} poses from: {filename}")
+    return poses
+  except FileNotFoundError:
+    print(f"Poses file not found: {filename}")
+    print("Using default hardcoded poses instead.")
+    return get_default_poses()
+
+
+def get_default_poses() -> list[np.ndarray]:
+  """Get the default hardcoded poses."""
+  return [
       np.array([0.0, 0.4, -1.0, -0.1, 0.294, -0.021]),
       np.array([0.0, 0.7, -1.7, -0.1, 0.294, -0.021]),
       np.array([0.0, 0.6, -1.3, -0.1, 0.294, -0.021]),
@@ -191,14 +310,33 @@ def generate_samples(
       np.array([0.0, 1.3, -1.5, 0.0, 0.0, 0.0]),
   ]
 
+
+def generate_samples(
+    robot: piper_interface.PiperInterface,
+    controller: piper_control.MitJointPositionController,
+    sample_poses: list[np.ndarray] | None = None,
+    orientation: str = "upright",
+) -> Sequence[GravityTorqueSample]:
+  """Generate gravity compensation samples using provided poses."""
+
+  if sample_poses is None:
+    sample_poses = get_default_poses()
+
+  # Get orientation-specific gains
+  p_gains, d_gains = get_gravity_compensation_gains(orientation)
+
+  print(f"Using {len(sample_poses)} sample poses for data collection")
+  print(f"Using gains for {orientation} orientation: P={p_gains}, D={d_gains}")
+
   result = []
-  for sample_pose in sample_poses:
+  for i, sample_pose in enumerate(sample_poses):
+    print(f"Processing pose {i+1}/{len(sample_poses)}")
     grav_torque_sampler = GravityTorqueSampler(
         robot,
         controller,
         sample_pose,
-        p_gains=np.array([3.0, 15.0, 12.0, 3.0, 3.0, 2.0]),
-        d_gains=np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0]),
+        p_gains=p_gains,
+        d_gains=d_gains,
     )
 
     result += grav_torque_sampler.sample()
@@ -233,31 +371,83 @@ def main(_):
         "troubleshooting guide @ "
         "https://github.com/Reimagine-Robotics/piper_control/blob/main/README.md"
     )
+  print(f"Active ports: {ports}")
 
-  robot = piper_interface.PiperInterface(can_port=ports[0])
-  robot.set_installation_pos(piper_interface.ArmInstallationPos.UPRIGHT)
+  can_port = _CAN_PORT.value or ports[0]
+  print(f"Using can_port: {can_port}")
 
+  robot = piper_interface.PiperInterface(can_port=can_port)
+
+  # Set installation position based on arm orientation flag
+  if _ARM_ORIENTATION.value == "upright":
+    robot.set_installation_pos(piper_interface.ArmInstallationPos.UPRIGHT)
+  elif _ARM_ORIENTATION.value == "left":
+    robot.set_installation_pos(piper_interface.ArmInstallationPos.LEFT)
+  elif _ARM_ORIENTATION.value == "right":
+    robot.set_installation_pos(piper_interface.ArmInstallationPos.RIGHT)
+
+  # Get the appropriate rest position for this orientation
+  rest_position = get_rest_position_for_orientation(_ARM_ORIENTATION.value)
+
+  # Set up robot for manual manipulation (low gains)
   print("resetting arm")
   piper_init.reset_arm(
       robot,
       arm_controller=piper_interface.ArmController.MIT,
       move_mode=piper_interface.MoveMode.MIT,
   )
-
   robot.show_status()
 
-  # Move the arm joints using Mit mode controller.
-  with piper_control.MitJointPositionController(
-      robot,
-      kp_gains=10.0,
-      kd_gains=0.8,
-      rest_position=piper_control.REST_POSITION,
-  ) as controller:
+  if _MODE.value == "collect_poses":
+    print("Running in pose collection mode")
+    print("Setting up robot for manual manipulation...")
 
-    all_samples = generate_samples(robot, controller)
-    export(all_samples, _OUT_PATH.value)
-    print(all_samples)
-    print(f"Exported to: {_OUT_PATH.value}")
+    # Move the arm joints using MIT mode controller with low gains for manual
+    # manipulation
+    with piper_control.MitJointPositionController(
+        robot,
+        kp_gains=0.0,  # Zero gains for manual manipulation
+        kd_gains=0.0,
+        rest_position=None,
+    ) as controller:
+
+      # Send rest pose once to set gains.
+      controller.move_to_position(list(rest_position), timeout=0.01)
+
+      # Collect poses interactively
+      collected_poses = collect_poses_interactively(robot)
+
+      if collected_poses:
+        save_poses_to_json(collected_poses, _POSES_PATH.value)
+        print("\nTo use these poses for data collection, run:")
+        print(
+            f"python {__file__} --mode=collect_data --poses_path={_POSES_PATH.value}"
+        )
+      else:
+        print("No poses collected.")
+
+  elif _MODE.value == "collect_data":
+    print("Running in data collection mode")
+
+    # Load poses from file if it exists
+    sample_poses = load_poses_from_json(_POSES_PATH.value)
+
+    # Move the arm joints using MIT mode controller for data collection
+    with piper_control.MitJointPositionController(
+        robot,
+        kp_gains=10.0,
+        kd_gains=0.8,
+        rest_position=list(rest_position),
+    ) as controller:
+
+      all_samples = generate_samples(
+          robot, controller, sample_poses, _ARM_ORIENTATION.value
+      )
+      export(all_samples, _OUT_PATH.value)
+      print(all_samples)
+      print(f"Exported to: {_OUT_PATH.value}")
+  else:
+    print("Invalid mode selected.")
 
   piper_init.disable_arm(robot)
 
