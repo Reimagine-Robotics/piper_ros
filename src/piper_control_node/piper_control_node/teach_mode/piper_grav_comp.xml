@@ -8,6 +8,7 @@
   <option gravity="0 0 -9.81"/>
 
   <worldbody>
+    <site name="origin_site" pos="0 0 0" size="0.001" type="sphere" rgba="1 0 0 1"/> <!-- For visualizing the origin coordinate frame -->
 
     <body name='arm_base_link' pos='0 0 0' quat='1 0 0 0'>
       <inertial diaginertia="0 0 0" mass="4.7" pos="0 0 0"/>
@@ -36,8 +37,7 @@
                   <joint name="joint6" pos="0 0 0" axis="0 0 1" range="-1.75 1.75" actuatorfrcrange="-100 100"/>
 
                   <body name="gripper_link" pos="0 0 0" quat="1 0 0 0">
-                      <!-- comment this line to not include the gripper -->
-                      <!-- <include file="gripper.xml" quat="0 0 0 1"></include> -->
+
                       <body name="gripper" pos="0 0 0" quat="1 0 0 0">
                           <inertial pos="0.0010312 0.0121761 0.0315481" quat="0.0230402 0.707091 0.0373344 0.70576" mass="0.195187" diaginertia="0.000154294 0.000125965 6.43536e-05"/>
 
