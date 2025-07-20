@@ -109,6 +109,11 @@ class PiperControlNode(Node):
         self.get_parameter("can_port").get_parameter_value().string_value
     )
 
+    self.declare_parameter("arm_orientation", "upright")
+    self.arm_orientation = (
+        self.get_parameter("arm_orientation").get_parameter_value().string_value
+    )
+
     # Create a CAN connection to robot.
     ports = piper_connect.find_ports()
     print(f"Available ports: {ports}")
@@ -271,6 +276,7 @@ class PiperControlNode(Node):
           self._arm_controller,
           piper_model_file_path,
           gravity_model_path,
+          self.arm_orientation,
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
@@ -584,7 +590,7 @@ class PiperControlNode(Node):
 
 def term_handler(signum, frame, node: PiperControlNode) -> None:
   del frame
-  node.get_logger().info(f"Stoping node on signal: {signum}")
+  node.get_logger().info(f"Stopping node on signal: {signum}")
   node.clean_stop()
   node.destroy_node()
   rclpy.shutdown()
