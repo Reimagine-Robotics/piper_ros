@@ -181,6 +181,16 @@ class PiperControlNode(Node):
     )
     self.create_service(
         std_srvs.Trigger,
+        f"{self.namespace}/enable_arm",
+        self.handle_enable_arm,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
+        f"{self.namespace}/disable_arm",
+        self.handle_disable_arm,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
         f"{self.namespace}/enable_gripper",
         self.handle_enable_gripper,  # type: ignore
     )
@@ -405,6 +415,25 @@ class PiperControlNode(Node):
     response.message = "Robot enabled."
     return response
 
+  def handle_enable_arm(
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
+    del request
+
+    piper_init.enable_arm(
+        self._robot,
+        arm_controller=piper_interface.ArmController.MIT,
+        move_mode=piper_interface.MoveMode.MIT,
+    )
+
+    self._arm_controller.start()
+
+    response.success = True
+    response.message = "Arm enabled."
+    return response
+
   def handle_enable_gripper(
       self,
       request: std_srvs.Trigger.Request,
@@ -435,6 +464,21 @@ class PiperControlNode(Node):
 
     response.success = True
     response.message = "Robot disabled."
+    return response
+
+  def handle_disable_arm(
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
+    del request
+
+    self._arm_controller.stop()
+
+    piper_init.disable_arm(self._robot)
+
+    response.success = True
+    response.message = "Arm disabled."
     return response
 
   def handle_disable_gripper(
