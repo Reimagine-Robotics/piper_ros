@@ -122,10 +122,11 @@ class PiperControlNode(Node):
 
     self._robot = piper_interface.PiperInterface(can_port=self.can_port)
 
+    # TODO: make the gain parameters of the node config.
     self._arm_controller = piper_control.MitJointPositionController(
         self._robot,
-        kp_gains=10.0,  # TODO: make this a parameter of the node.
-        kd_gains=0.8,  # TODO: make this a parameter of the node.
+        kp_gains=[5.0, 4.0, 4.0, 5.0, 8.0, 5.0],
+        kd_gains=0.8,
         rest_position=piper_control.REST_POSITION,
     )
 
