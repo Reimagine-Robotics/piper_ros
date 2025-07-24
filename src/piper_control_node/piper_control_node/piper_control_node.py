@@ -153,7 +153,7 @@ class PiperControlNode(Node):
     #Feedback control
     self.joint_feedback_command_sub = self.create_subscription(
         std_msgs.Float64MultiArray,
-        f"{self.namespace}/joint_commands",
+        f"{self.namespace}/joint_feedback_commands",
         self.joint_feedback_cmd_callback,
         qos_profile=10,
     )
