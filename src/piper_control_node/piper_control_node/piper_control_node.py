@@ -248,8 +248,7 @@ class PiperControlNode(Node):
           self._robot,
           self._arm_controller,
           piper_model_file_path,
-          gravity_model_path,
-          None
+          gravity_model_path
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
