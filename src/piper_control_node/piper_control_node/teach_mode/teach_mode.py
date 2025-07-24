@@ -161,6 +161,7 @@ class TeachController:
     self._gravity_model = _compute_gravity_model(
         piper_model_path, grav_torques_file_path
     )
+    self._joint_feedback_torques = None
 
   def update_joint_feedback_torques(self, efforts: list[float]):
     self._joint_feedback_torques = efforts
