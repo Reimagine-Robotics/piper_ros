@@ -150,6 +150,14 @@ class PiperControlNode(Node):
         qos_profile=10,
     )
 
+    #Feedback control
+    self.joint_feedback_command_sub = self.create_subscription(
+        std_msgs.Float64MultiArray,
+        f"{self.namespace}/joint_commands",
+        self.joint_feedback_cmd_callback,
+        qos_profile=10,
+    )
+
     # Gripper control
     self.gripper_state_pub = self.create_publisher(
         sensor_msgs.JointState,
@@ -241,6 +249,7 @@ class PiperControlNode(Node):
           self._arm_controller,
           piper_model_file_path,
           gravity_model_path,
+          None
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
@@ -320,6 +329,28 @@ class PiperControlNode(Node):
 
     else:
       self.get_logger().warn(f"Received invalid joint command: {msg}")
+
+  def joint_feedback_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
+    """Handle incoming joint feedback commands.
+
+    Args:
+      msg: The incoming joint command message contains efforts only.
+    """
+
+    try:
+      joint_command = JointCommand.from_msg(msg, self.get_logger())
+    except ValueError as e:
+      self.get_logger().warn(f"Invalid joint command message: {e}")
+      return
+
+    efforts = list(joint_command.efforts)
+
+    if efforts:
+      self.get_logger().debug(f"Received joint feedback efforts: {efforts}")
+      self._teach_controller.update_joint_feedback_torques(efforts)
+    else:
+      self.get_logger().warn(f"Received invalid joint feedback command: {msg}")
+
 
   def publish_joint_states(self):
     joint_positions = self._robot.get_joint_positions()

@@ -154,13 +154,16 @@ class TeachController:
       robot: piper_interface.PiperInterface,
       controller: piper_control.MitJointPositionController,
       piper_model_path: str,
-      grav_torques_file_path: str,
+      grav_torques_file_path: str
   ):
     self._robot = robot
     self._controller = controller
     self._gravity_model = _compute_gravity_model(
         piper_model_path, grav_torques_file_path
     )
+
+  def update_joint_feedback_torques(self, efforts: list[float]):
+    self._joint_feedback_torques = efforts
 
   def step(self) -> None:
     cur_joints = self._robot.get_joint_positions()
@@ -171,5 +174,8 @@ class TeachController:
     # Stability torque acts to counteract joint movement. A dampener basically.
     stability_torque = -cur_vel * 1.0
     applied_torque = hover_torque + stability_torque
+
+    if self._joint_feedback_torques is not None:
+      applied_torque += self._joint_feedback_torques
 
     self._controller.command_torques(list(applied_torque))
