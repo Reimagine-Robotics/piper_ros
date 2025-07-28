@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 dependencies = [
     "numpy",
     "r2-transformations",
-    "piper_control>=1.0.0",
+    "piper_control>=1.1.1",
     "piper_sdk>=0.2.19",
 ]
 

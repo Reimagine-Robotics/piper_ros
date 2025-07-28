@@ -9,6 +9,7 @@ import dataclasses
 import functools
 import os
 import signal
+import json
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
@@ -18,6 +19,7 @@ from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
+from piper_control_node import get_metadata
 
 
 @dataclasses.dataclass
@@ -210,6 +212,13 @@ class PiperControlNode(Node):
         self.handle_is_enabled,  # type: ignore
     )
 
+    # Publish metadata about the node.
+    self.node_metadata_pub = self.create_publisher(
+        std_msgs.String,
+        f"{self.namespace}/node_metadata",
+        qos_profile=10,
+    )
+
     self.get_logger().info(
         f"Piper control node started with CAN ID: {self.can_port}"
     )
@@ -217,6 +226,9 @@ class PiperControlNode(Node):
     # Timer to periodically publish joint states
     self.create_timer(0.005, self.publish_joint_states)
     self.create_timer(0.005, self.publish_gripper_state)
+
+    # Timer to publish node metadata
+    self.create_timer(1.0, self.publish_node_metadata)
 
     # Put teach mode behind a flag as it requires additional libraries be
     # installed (MUJOCO and Scipy).
@@ -554,6 +566,12 @@ class PiperControlNode(Node):
   def teach_mode(self) -> None:
     assert self._teach_mode_active
     self._teach_controller.step()
+
+  def publish_node_metadata(self) -> None:
+    """Publish metadata about the node."""
+    metadata = get_metadata.get_metadata()
+    msg = std_msgs.String(data=json.dumps(metadata))
+    self.node_metadata_pub.publish(msg)
 
 
 def term_handler(signum, frame, node: PiperControlNode) -> None:
