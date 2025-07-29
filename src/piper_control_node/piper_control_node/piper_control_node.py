@@ -7,9 +7,9 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import functools
+import json
 import os
 import signal
-import json
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
@@ -19,6 +19,7 @@ from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
+
 from piper_control_node import get_metadata
 
 
@@ -115,11 +116,15 @@ class PiperControlNode(Node):
     print(f"Active ports: {piper_connect.active_ports()}")
 
     if not ports:
+      readme = (
+          "https://github.com/Reimagine-Robotics/piper_control/blob/main/"
+          "README.md"
+      )
       raise ValueError(
           "No ports found. Make sure the Piper is connected and turned on. "
           "If you are having issues connecting to the piper, check our "
           "troubleshooting guide @ "
-          "https://github.com/Reimagine-Robotics/piper_control/blob/main/README.md"
+          f"{readme}"
       )
 
     self._robot = piper_interface.PiperInterface(can_port=self.can_port)
@@ -235,7 +240,10 @@ class PiperControlNode(Node):
     if gravity_model_path:
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
 
+      # pylint: disable=import-outside-toplevel
       from piper_control_node.teach_mode import teach_mode
+
+      # pylint: enable=import-outside-toplevel
 
       self.create_service(
           std_srvs.Trigger,
