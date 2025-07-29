@@ -3,4 +3,4 @@
 Update this file manually when there is a change to the piper_control_node.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
