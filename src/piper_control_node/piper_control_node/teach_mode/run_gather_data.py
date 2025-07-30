@@ -197,7 +197,7 @@ def generate_samples(
         robot,
         controller,
         sample_pose,
-        p_gains=np.array([3.0, 15.0, 12.0, 3.0, 3.0, 2.0]),
+        p_gains=np.array([3.0, 15.0, 12.0, 5.0, 5.0, 3.0]),
         d_gains=np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0]),
     )
 
