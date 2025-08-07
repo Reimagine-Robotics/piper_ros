@@ -131,9 +131,8 @@ class PiperControlNode(Node):
 
     self._arm_controller = piper_control.MitJointPositionController(
         self._robot,
-        # TODO: make this a parameter of the node.
-        kp_gains=[5.5, 5.5, 5.2, 5.6, 7.0, 6.0],
-        kd_gains=0.8,  # TODO: make this a parameter of the node.
+        kp_gains=[5.0, 5.0, 5.0, 5.6, 7.0, 6.0],
+        kd_gains=0.8,
         rest_position=piper_control.REST_POSITION,
     )
 
