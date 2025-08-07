@@ -577,7 +577,7 @@ class PiperControlNode(Node):
 
   def publish_node_metadata(self) -> None:
     """Publish metadata about the node."""
-    metadata = get_metadata.get_metadata()
+    metadata = get_metadata.get_metadata(self._robot)
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
 
