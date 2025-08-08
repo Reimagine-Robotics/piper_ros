@@ -5,11 +5,14 @@ import subprocess
 
 from piper_control import __git_hash__ as __piper_control_git_hash__
 from piper_control import __version__ as __piper_control_version__
+from piper_control import piper_interface
 
 from ._version import __version__ as __piper_ros_version__
 
 
-def get_metadata() -> dict:
+def get_metadata(
+    piper: piper_interface.PiperInterface,
+) -> dict:
   """Get metadata about the piper_ros.piper_control_node node."""
   return {
       "piper_ros_version": get_piper_ros_version(),
@@ -17,6 +20,7 @@ def get_metadata() -> dict:
       "piper_control_version": get_piper_control_version(),
       "piper_control_git_hash": get_piper_control_git_hash(),
       "hostname": socket.gethostname(),
+      **_piper_version_info(piper),
   }
 
 
@@ -44,3 +48,15 @@ def get_piper_control_version() -> str:
 def get_piper_control_git_hash() -> str:
   """Get the git hash of the piper_control package."""
   return __piper_control_git_hash__
+
+
+def _piper_version_info(
+    piper: piper_interface.PiperInterface,
+) -> dict:
+  """Get version information from the piper_interface."""
+  return {
+      "piper_interface_version": piper.get_piper_interface_name(),
+      "piper_protocol_version": piper.get_piper_protocol_version(),
+      "piper_sdk_version": piper.get_piper_sdk_version(),
+      "piper_firmware_version": piper.get_piper_firmware_version(),
+  }
