@@ -1,4 +1,4 @@
-"""Gets metadata about the piper_ros.piper_control_node ROS 2 node."""
+"""Gets metadata about the piper_ros.piper_control_ros2 ROS 2 node."""
 
 import socket
 import subprocess
@@ -13,7 +13,7 @@ from ._version import __version__ as __piper_ros_version__
 def get_metadata(
     piper: piper_interface.PiperInterface,
 ) -> dict:
-  """Get metadata about the piper_ros.piper_control_node node."""
+  """Get metadata about the piper_ros.piper_control_ros2 node."""
   return {
       "piper_ros_version": get_piper_ros_version(),
       "piper_ros_git_hash": get_piper_ros_git_hash(),
