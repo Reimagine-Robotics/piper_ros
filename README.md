@@ -7,10 +7,10 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
 
 ## Manual Install
 
-  1.  Install `can-utils`:
+  1.  Install `can-utils` and `ethtool`:
 
       ```bash
-      sudo apt install -y can-utils
+      sudo apt install -y can-utils ethtool
       ```
 
   2.  Install `piper_control`:
