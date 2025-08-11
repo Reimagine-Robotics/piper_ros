@@ -26,14 +26,108 @@ class GravityTorqueSample:
   torque: float
 
 
-def grav_comp_adjustment_fn(sim_torque, a, b, c, d):
-  """A cubic adjustment of sim-predicted gravity torques."""
-  return (
-      a * sim_torque * sim_torque * sim_torque
-      + b * sim_torque * sim_torque
-      + c * sim_torque
-      + d
+def grav_comp_adjustment_fn(input_array, *params):
+  """Enhanced gravity compensation using joint configuration features.
+
+  Args:
+    input_array: Flattened array containing [sim_torques(6), joint_angles(6), joint_idx(1)]
+    *params: Variable number of parameters that scipy will optimize
+
+  Returns:
+    Adjusted gravity compensation torque for the specified joint
+  """
+  # Unpack the flattened input array
+  sim_torques = input_array[:6]
+  joint_angles = input_array[6:12]
+  joint_idx = int(input_array[12])
+
+  params = np.array(params)
+
+  # Build feature vector using helper function
+  features = _build_gravity_features(sim_torques, joint_angles, joint_idx)
+
+  # Ensure we have the right number of parameters
+  if len(params) != len(features):
+    raise ValueError(f"Expected {len(features)} parameters, got {len(params)}")
+
+  return np.dot(features, params)
+
+
+def _build_gravity_features(sim_torques, joint_angles, joint_idx):
+  """Build feature vector for enhanced gravity compensation.
+
+  Separate function to make it easy to experiment by commenting out feature
+  groups.
+
+  Args:
+    sim_torques: Array of all 6 MuJoCo predicted torques
+    joint_angles: Array of 6 joint angles
+    joint_idx: Index of joint we're predicting for (0-5)
+
+  Returns:
+    numpy array of features
+  """
+  features = []
+
+  # Get the specific torque for this joint
+  sim_torque = sim_torques[joint_idx]
+
+  # Base features: powers of sim_torque for this joint
+  features.extend(
+      [
+          1.0,  # bias
+          sim_torque,
+          sim_torque**2,
+          sim_torque**3,
+      ]
   )
+
+  # # Joint angle features (trigonometric for periodic/smooth behavior)
+  # # All joint angles can affect any joint's gravity compensation
+  # for angle in joint_angles:
+  #   features.extend(
+  #       [
+  #           np.sin(angle),
+  #           np.cos(angle),
+  #           np.sin(2 * angle),  # higher harmonics for finer detail
+  #           np.cos(2 * angle),
+  #       ]
+  #   )
+
+  # # Cross-terms: this joint's sim_torque modulated by all joint angles
+  # for angle in joint_angles:
+  #   features.extend(
+  #       [
+  #           sim_torque * np.sin(angle),
+  #           sim_torque * np.cos(angle),
+  #       ]
+  #   )
+
+  # # Inter-joint torque coupling: other joints' torques can affect this joint
+  # for i, other_sim_torque in enumerate(sim_torques):
+  #   if i != joint_idx:  # Don't include self, already covered in base features
+  #     features.extend(
+  #         [
+  #             other_sim_torque,  # Linear coupling
+  #             other_sim_torque
+  #             * np.sin(
+  #                 joint_angles[joint_idx]
+  #             ),  # Modulated by this joint's angle
+  #             other_sim_torque * np.cos(joint_angles[joint_idx]),
+  #         ]
+  #     )
+
+  # # Joint coupling terms (some joints work together for gravity compensation)
+  # features.extend(
+  #     [
+  #         np.sin(joint_angles[1])
+  #         * np.cos(joint_angles[2]),  # shoulder-elbow coupling
+  #         joint_angles[0] * joint_angles[1],  # base-shoulder coupling
+  #         np.sin(joint_angles[1] + joint_angles[2]),  # combined arm pose
+  #     ]
+  # )
+
+  return np.array(features)
 
 
 class _SimGravityTorquePrediction:
@@ -47,7 +141,7 @@ class _SimGravityTorquePrediction:
   ):
     # JIT import of mujoco to not force mujoco install for piper_ros users that
     # don't use teach mode functionality.
-    import mujoco
+    import mujoco  # type: ignore pylint: disable=import-outside-toplevel
 
     self._model = mujoco.MjModel.from_xml_path(model_path)
 
@@ -66,7 +160,7 @@ class _SimGravityTorquePrediction:
 
   @staticmethod
   def _get_gravity_vector_for_orientation(orientation: str) -> list[float]:
-    """Get gravity vector for arm mounting orientation using analytical transforms.
+    """Get gravity vector for arm orientation using analytical transforms.
 
     Uses the ArmOrientation system and r2-transformations for proper analytical
     computation instead of hardcoded transformations.
@@ -96,11 +190,17 @@ class _SimGravityTorquePrediction:
     self._mj_forward_fn(self._model, self._data)
     result = [self._data.qfrc_bias[ji] for ji in self._joint_ids]
 
-    for i, predicted_torque in enumerate(result):
+    # Get all sim torques as numpy array
+    sim_torques = np.array(result)
+
+    # Apply learned adjustments to each joint
+    for i in range(len(result)):
       if i in self._grav_comp_params:
-        model_input = np.array(predicted_torque)
         params = self._grav_comp_params[i]
-        result[i] = grav_comp_adjustment_fn(model_input, *params)
+
+        # Create flattened input array: sim_torques(6) + joint_angles(6) + joint_idx(1)
+        input_array = np.concatenate([sim_torques, np.array(joint_angles), [i]])
+        result[i] = grav_comp_adjustment_fn(input_array, *params)
 
     assert len(result) == len(self._joint_ids)
     return result
@@ -139,9 +239,9 @@ def _compute_gravity_model(
   gravity model that uses both MUJOCO and a learned residual.
   """
 
-  # JIT import of scipy to not force it on piper_ros users that dont use teach
+  # JIT import of scipy to not force it on piper_ros users that don't use teach
   # mode functionality.
-  from scipy import optimize
+  from scipy import optimize  # type: ignore pylint: disable=import-outside-toplevel
 
   real_gravity = _load_sampled_gravity(grav_torques_file_path)
   sim_gravity = _SimGravityTorquePrediction(
@@ -152,7 +252,7 @@ def _compute_gravity_model(
 
   for joint_idx, samples in real_gravity.items():
     real_torques = []
-    sim_torques = []
+    input_data_list = []
 
     for sample in samples:
       real_torques.append(sample.torque)
@@ -160,16 +260,55 @@ def _compute_gravity_model(
       desired_angles = list(sample.joint_configuration)
       model_torques = sim_gravity.predict(desired_angles)
       model_torque = model_torques[joint_idx]
-      sim_torques.append(np.array(model_torque))
 
-    sim_torques = np.array(sim_torques)
+      # Pack sim_torque and joint_angles as tuple for enhanced function
+      input_data_list.append((model_torque, np.array(desired_angles)))
 
+    # Convert to format expected by curve_fit
+    real_torques = np.array(real_torques)
+
+    # Calculate expected number of features by calling the helper function
+    # Use first sample to determine feature count
+    sample_sim_torque, sample_joint_angles = input_data_list[0]
+    # Create dummy sim_torques array for feature building (we need all torques)
+    dummy_sim_torques = np.array([sample_sim_torque] * len(sample_joint_angles))
+    sample_features = _build_gravity_features(
+        dummy_sim_torques, sample_joint_angles, joint_idx
+    )
+    n_total_features = len(sample_features)
+
+    # Initial guess: mostly zeros except for the linear sim_torque term
+    p0_enhanced = np.zeros(n_total_features)
+    p0_enhanced[1] = 1.0  # sim_torque linear term (index 1 in feature vector)
+
+    # Prepare input data for grav comp function - concatenate into flat arrays
+    input_arrays = []
+    for sample in samples:
+      desired_angles = list(sample.joint_configuration)
+      model_torques = sim_gravity.predict(desired_angles)
+      sim_torques_array = np.array(model_torques)
+
+      # Concatenate sim_torques(6) + joint_angles(6) + joint_idx(1) into single array
+      input_array = np.concatenate(
+          [sim_torques_array, np.array(desired_angles), [joint_idx]]
+      )
+      input_arrays.append(input_array)
+
+    # Convert to 2D array for scipy
+    x_data = np.array(input_arrays)
+    breakpoint()
     opt_params = optimize.curve_fit(
         grav_comp_adjustment_fn,
-        sim_torques,
+        x_data,
         real_torques,
-        p0=[0.0, 0.0, 1.0, 0.0],
+        p0=p0_enhanced,
+        maxfev=2000,  # Increase max function evaluations for complex fit
     )[0]
+
+    print(
+        f"Joint {joint_idx}: Using gravity compensation model with "
+        f"{len(opt_params)} parameters"
+    )
 
     per_joint_params[joint_idx] = opt_params
 
