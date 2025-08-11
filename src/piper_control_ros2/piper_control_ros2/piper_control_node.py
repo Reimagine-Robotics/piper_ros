@@ -22,6 +22,7 @@ from std_srvs import srv as std_srvs
 
 from piper_control_ros2 import get_metadata
 
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
 @dataclasses.dataclass
 class JointCommand:
@@ -373,6 +374,8 @@ class PiperControlNode(Node):
     joint_velocities = self._robot.get_joint_velocities()
     joint_efforts = self._robot.get_joint_efforts()
     msg = sensor_msgs.JointState()
+    msg.name = JOINT_NAMES
+    msg.header.stamp = self.get_clock().now().to_msg()
     msg.position = list(joint_positions)
     msg.velocity = list(joint_velocities)
     msg.effort = list(joint_efforts)
@@ -394,6 +397,7 @@ class PiperControlNode(Node):
     msg = sensor_msgs.JointState()
     msg.position = [position]
     msg.effort = [effort]
+    msg.header.stamp = self.get_clock().now().to_msg()
 
     self.gripper_state_pub.publish(msg)
     self.get_logger().debug(
