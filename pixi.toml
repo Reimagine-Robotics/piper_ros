@@ -1,0 +1,22 @@
+[workspace]
+authors   = ["JafarAbdi <jafar.uruc@gmail.com>"]
+channels  = ["conda-forge", "https://prefix.dev/robostack-jazzy"]
+name      = "piper_ros"
+platforms = ["linux-64"]
+version   = "0.1.0"
+
+[activation]
+env = { RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp", ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST" }
+
+[tasks]
+
+[dependencies]
+
+# ROS 2 dependencies
+ros-jazzy-desktop = ">=0.11.0,<0.12"
+
+[pypi-dependencies]
+piper_control           = { git = "https://github.com/Reimagine-Robotics/piper_control/", branch = "main" }
+piper_ros               = { path = ".", editable = true }
+piper_control_node      = { path = "src/piper_control_node", editable = true }
+piper_puppeteering_node = { path = "src/piper_puppeteering_node", editable = true }
