@@ -5,7 +5,15 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
 
 ## Installation
 
-## Manual Install
+### pixi Install (dev and testing)
+
+Make sure you have [pixi](https://pixi.sh/latest/#installation) installed.
+
+```bash
+pixi install
+```
+
+### Manual Install
 
   1.  Install `can-utils` and `ethtool`:
 
@@ -24,11 +32,3 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
       ```bash
       pip install .
       ```
-
-## pixi Install (dev and testing)
-
-Make sure you have [pixi](https://pixi.sh/latest/#installation) installed.
-
-```bash
-pixi install
-```
