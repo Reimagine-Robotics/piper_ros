@@ -684,7 +684,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/08/b3/2844ad99e2b8333613973cb25e3ae14b641fe55e96474907e57a08715769/python_can-4.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/7e/a2df9cbc526875083abeddf1dace2b361e38c3d9725739a80571506b6ee7/r2_transformations-0.1.0-py3-none-any.whl
       - pypi: ./
-      - pypi: ./src/piper_control_node
+      - pypi: ./src/piper_control_ros2
       - pypi: ./src/piper_puppeteering_node
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -4228,10 +4228,10 @@ packages:
   - packaging
   - piper-sdk>=0.2.19
   requires_python: '>=3.10'
-- pypi: ./src/piper_control_node
-  name: piper-control-node
+- pypi: ./src/piper_control_ros2
+  name: piper-control-ros2
   version: 0.0.0
-  sha256: 40acc72923caed36de7096705e97df91a261594b2d4ad1dab0dbccd6611b802b
+  sha256: 89d834321bdecf0a2620cd378faf8fe7ca17c5f52ed07b42c80e18b29063b228
   requires_dist:
   - setuptools
   editable: true

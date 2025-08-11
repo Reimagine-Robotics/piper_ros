@@ -13,13 +13,13 @@ def generate_launch_description():
   return LaunchDescription(
       [
           Node(
-              package="piper_control_node",
+              package="piper_control_ros2",
               executable="piper_control_node",
               name="piper_control_node_0",
               parameters=[{"namespace": "robot0"}, {"can_port": "can0"}],
           ),
           Node(
-              package="piper_control_node",
+              package="piper_control_ros2",
               executable="piper_control_node",
               name="piper_control_node_1",
               parameters=[{"namespace": "robot1"}, {"can_port": "can1"}],

@@ -20,7 +20,7 @@ from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
-from piper_control_node import get_metadata
+from piper_control_ros2 import get_metadata
 
 
 @dataclasses.dataclass
@@ -257,7 +257,7 @@ class PiperControlNode(Node):
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
 
       # pylint: disable=import-outside-toplevel
-      from piper_control_node.teach_mode import teach_mode
+      from piper_control_ros2.teach_mode import teach_mode
 
       # pylint: enable=import-outside-toplevel
 
@@ -274,7 +274,7 @@ class PiperControlNode(Node):
 
       # Get the path to the share directory of your package
       package_share_directory = get_package_share_directory(
-          "piper_control_node"
+          "piper_control_ros2"
       )
 
       # Construct the full path to your XML file
