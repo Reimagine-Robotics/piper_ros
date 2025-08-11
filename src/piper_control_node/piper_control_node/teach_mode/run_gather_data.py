@@ -1,12 +1,31 @@
-"""Grav Comp model data gathering script.
+"""
+Grav Comp model data gathering script.
 
-This script will move the arm to various joint configurations, and at each pose
-it will try to apply a torque (using a PD-controller) to find a stable
-configuration where the torque exactly counteracts gravity. This will be
-recorded as a data point. Each data point is a joint angle configuration and a
-torque command per joint that compensates for gravity.
+This script moves the arm to various joint configurations, and at each pose
+it applies a torque (using a PD-controller) to find a stable configuration
+where the torque exactly counteracts gravity. This is recorded as a data point.
+Each data point consists of a joint angle configuration and a torque command
+per joint that compensates for gravity.
+
 The generated set of grav comp torques is later used in teach_mode.py to fit a
 gravity model that can be used in any joint configuration.
+
+Usage examples:
+
+Gather data for single upright arm:
+  $ python run_gather_data.py --mode=collect_data --arm_orientation=upright
+
+Dump list of poses to visit:
+  $ python run_gather_data.py --mode=collect_poses \
+    --can_port=can1 \
+    --arm_orientation=left \
+    --poses_path=/tmp/left_poses.json
+
+Gather data for left/right arm:
+  $ python run_gather_data.py --mode=collect_data \
+    --can_port=can1 \
+    --arm_orientation=left \
+    --poses_path=/tmp/left_poses.json
 """
 
 import dataclasses
@@ -174,13 +193,8 @@ class GravityTorqueSampler:
 
 def get_rest_position_for_orientation(orientation: str) -> np.ndarray:
   """Get the appropriate rest position based on arm orientation."""
-  if orientation == "upright":
-    return np.array(piper_control.REST_POSITION)
-  elif orientation in ["left", "right"]:
-    # Custom rest position for left/right mounted arms (3 significant figures)
-    return np.array([-1.66, 2.91, -2.74, 0.0545, -0.271, 0.0979])
-  else:
-    raise ValueError(f"Unknown arm orientation: {orientation}")
+  arm_orientation = piper_control.ArmOrientations.from_string(orientation)
+  return np.array(arm_orientation.rest_position)
 
 
 def get_gravity_compensation_gains(
@@ -378,7 +392,9 @@ def main(_):
 
   robot = piper_interface.PiperInterface(can_port=can_port)
 
-  # Set installation position based on arm orientation flag
+  # Set installation position based on arm orientation flag. We don't *think*
+  # this affects reported joint efforts during data gathering, but it does allow
+  # using built-in teach mode during pose collection.
   if _ARM_ORIENTATION.value == "upright":
     robot.set_installation_pos(piper_interface.ArmInstallationPos.UPRIGHT)
   elif _ARM_ORIENTATION.value == "left":

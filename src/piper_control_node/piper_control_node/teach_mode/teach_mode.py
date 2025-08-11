@@ -16,6 +16,7 @@ from typing import Mapping, Sequence
 
 import numpy as np
 from piper_control import piper_control, piper_interface
+from transformations import transformations as tr
 
 
 @dataclasses.dataclass
@@ -45,12 +46,12 @@ class _SimGravityTorquePrediction:
       arm_orientation: str = "upright",
   ):
     # JIT import of mujoco to not force mujoco install for piper_ros users that
-    # done use teach mode functionality.
+    # don't use teach mode functionality.
     import mujoco
 
     self._model = mujoco.MjModel.from_xml_path(model_path)
 
-    # Set gravity vector based on arm orientation
+    # Set gravity vector based on arm orientation using new system
     gravity = self._get_gravity_vector_for_orientation(arm_orientation)
     self._model.opt.gravity[:] = gravity
     print(f"Set gravity vector for {arm_orientation} orientation: {gravity}")
@@ -65,18 +66,24 @@ class _SimGravityTorquePrediction:
 
   @staticmethod
   def _get_gravity_vector_for_orientation(orientation: str) -> list[float]:
-    """Get gravity vector for arm mounting orientation."""
-    if orientation == "upright":
-      # Standard downward gravity
-      return [0.0, 0.0, -9.81]
-    elif orientation == "right":
-      # Rotate gravity +90 degrees around X-axis: (0,0,-g) -> (0,g,0)
-      return [0.0, 9.81, 0.0]
-    elif orientation == "left":
-      # Rotate gravity -90 degrees around X-axis: (0,0,-g) -> (0,-g,0)
-      return [0.0, -9.81, 0.0]
-    else:
-      raise ValueError(f"Unknown arm orientation: {orientation}")
+    """Get gravity vector for arm mounting orientation using analytical transforms.
+
+    Uses the ArmOrientation system and r2-transformations for proper analytical
+    computation instead of hardcoded transformations.
+    """
+
+    # Get the orientation object and compute gravity analytically
+    arm_orientation = piper_control.ArmOrientations.from_string(orientation)
+
+    # Standard downward gravity in world frame
+    world_gravity = np.array([0.0, 0.0, -9.81])
+
+    # Rotate gravity into arm's coordinate frame using mounting quaternion
+    gravity_vector = tr.quat_rotate(
+        np.array(arm_orientation.mounting_quaternion), world_gravity
+    )
+
+    return np.asarray(gravity_vector).tolist()
 
   def predict(self, joint_angles: Sequence[float]) -> Sequence[float]:
     assert len(joint_angles) == len(self._joint_ids)

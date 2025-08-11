@@ -134,11 +134,17 @@ class PiperControlNode(Node):
 
     self._robot = piper_interface.PiperInterface(can_port=self.can_port)
 
+    # Get the appropriate rest position based on arm orientation
+    arm_orientation = piper_control.ArmOrientations.from_string(
+        self.arm_orientation
+    )
+    rest_position = arm_orientation.rest_position
+
     self._arm_controller = piper_control.MitJointPositionController(
         self._robot,
         kp_gains=[5.0, 5.0, 5.0, 5.6, 7.0, 6.0],
         kd_gains=0.8,
-        rest_position=piper_control.REST_POSITION,
+        rest_position=rest_position,
     )
 
     self._gripper_controller = piper_control.GripperController(self._robot)
