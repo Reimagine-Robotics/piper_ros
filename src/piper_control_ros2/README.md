@@ -42,6 +42,8 @@ To start the Piper Control Node:
 
 ```bash
 ros2 run piper_control_ros2 piper_control_node
+# Or using pixi
+pixi run piper_control_node
 ```
 
 To start an arm under the namespace "piper":
