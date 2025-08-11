@@ -40,7 +40,7 @@ setup(
     license="MIT",
     entry_points={
         "console_scripts": [
-            "piper_control_ros2 = piper_control_ros2.piper_control_node:main",
+            "piper_control_node = piper_control_ros2.piper_control_node:main",
         ],
     },
 )
