@@ -679,8 +679,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zziplib-0.13.69-he45264a_2.conda
       - pypi: git+https://github.com/Reimagine-Robotics/piper_control/?branch=main#6bb284685a4a164c35911fd0e48772a1d5e893dd
       - pypi: https://files.pythonhosted.org/packages/8f/aa/ba0014cc4659328dc818a28827be78e6d97312ab0cb98105a770924dc11e/absl_py-2.3.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/e7/98/87b5946356095738cb90a6df7b35ff69ac5750f6e783d5fbcc5cb3b6cbd7/etils-1.13.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/2f/e0/014d5d9d7a4564cf1c40b5039bc882db69fd881111e03ab3657ac0b218e2/fsspec-2025.7.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/7f/ba/de3630757c7d7fc2086aaf3994926d6b869d31586e4d0c14f1666af31b93/glfw-2.9.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.p39.p310.p311.p312.p313-none-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/6d/87/f5454b3e3844bb5c37037a4f3e5e6e70a37263f06d34c2a5b62e801a5b3f/mujoco-3.3.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/3f/945ef7ab14dc4f9d7f40288d2df998d1837ee0888ec3659c813487572faa/pip-25.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/33/1c/ba7ff89bc051bbb809be27038f1ba502efca717ce305c0a4e28accd78bf3/piper_sdk-0.4.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/92/44/8634af40b0db528b5b37e901c0dc67321354880d251bf8965901d57693a5/PyOpenGL-3.1.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/b3/2844ad99e2b8333613973cb25e3ae14b641fe55e96474907e57a08715769/python_can-4.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/7e/a2df9cbc526875083abeddf1dace2b361e38c3d9725739a80571506b6ee7/r2_transformations-0.1.0-py3-none-any.whl
       - pypi: ./
@@ -1280,6 +1285,79 @@ packages:
   purls: []
   size: 1440699
   timestamp: 1648505042260
+- pypi: https://files.pythonhosted.org/packages/e7/98/87b5946356095738cb90a6df7b35ff69ac5750f6e783d5fbcc5cb3b6cbd7/etils-1.13.0-py3-none-any.whl
+  name: etils
+  version: 1.13.0
+  sha256: d9cd4f40fbe77ad6613b7348a18132cc511237b6c076dbb89105c0b520a4c6bb
+  requires_dist:
+  - etils[array-types] ; extra == 'all'
+  - etils[eapp] ; extra == 'all'
+  - etils[ecolab] ; extra == 'all'
+  - etils[edc] ; extra == 'all'
+  - etils[enp] ; extra == 'all'
+  - etils[epath] ; extra == 'all'
+  - etils[epath-gcs] ; extra == 'all'
+  - etils[epath-s3] ; extra == 'all'
+  - etils[epy] ; extra == 'all'
+  - etils[etqdm] ; extra == 'all'
+  - etils[etree] ; extra == 'all'
+  - etils[etree-dm] ; extra == 'all'
+  - etils[etree-jax] ; extra == 'all'
+  - etils[etree-tf] ; extra == 'all'
+  - etils[enp] ; extra == 'array-types'
+  - pytest ; extra == 'dev'
+  - pytest-subtests ; extra == 'dev'
+  - pytest-xdist ; extra == 'dev'
+  - pyink ; extra == 'dev'
+  - pylint>=2.6.0 ; extra == 'dev'
+  - chex ; extra == 'dev'
+  - fiddle ; extra == 'dev'
+  - torch ; extra == 'dev'
+  - optree ; extra == 'dev'
+  - tensorflow-datasets ; extra == 'dev'
+  - pydantic ; extra == 'dev'
+  - sphinx-apitree[ext] ; extra == 'docs'
+  - etils[dev,all] ; extra == 'docs'
+  - absl-py ; extra == 'eapp'
+  - simple-parsing ; extra == 'eapp'
+  - etils[epy] ; extra == 'eapp'
+  - jupyter ; extra == 'ecolab'
+  - numpy ; extra == 'ecolab'
+  - mediapy ; extra == 'ecolab'
+  - packaging ; extra == 'ecolab'
+  - protobuf ; extra == 'ecolab'
+  - etils[enp] ; extra == 'ecolab'
+  - etils[epy] ; extra == 'ecolab'
+  - etils[etree] ; extra == 'ecolab'
+  - etils[epy] ; extra == 'edc'
+  - numpy ; extra == 'enp'
+  - einops ; extra == 'enp'
+  - etils[epy] ; extra == 'enp'
+  - fsspec ; extra == 'epath'
+  - importlib-resources ; extra == 'epath'
+  - typing-extensions ; extra == 'epath'
+  - zipp ; extra == 'epath'
+  - etils[epy] ; extra == 'epath'
+  - gcsfs ; extra == 'epath-gcs'
+  - etils[epath] ; extra == 'epath-gcs'
+  - s3fs ; extra == 'epath-s3'
+  - etils[epath] ; extra == 'epath-s3'
+  - typing-extensions ; extra == 'epy'
+  - absl-py ; extra == 'etqdm'
+  - tqdm ; extra == 'etqdm'
+  - etils[epy] ; extra == 'etqdm'
+  - etils[array-types] ; extra == 'etree'
+  - etils[epy] ; extra == 'etree'
+  - etils[enp] ; extra == 'etree'
+  - etils[etqdm] ; extra == 'etree'
+  - dm-tree ; extra == 'etree-dm'
+  - etils[etree] ; extra == 'etree-dm'
+  - jax[cpu] ; extra == 'etree-jax'
+  - etils[etree] ; extra == 'etree-jax'
+  - tensorflow ; extra == 'etree-tf'
+  - etils[etree] ; extra == 'etree-tf'
+  - etils[ecolab] ; extra == 'lazy-imports'
+  requires_python: '>=3.10'
 - conda: https://conda.anaconda.org/conda-forge/noarch/exceptiongroup-1.3.0-pyhd8ed1ab_0.conda
   sha256: ce61f4f99401a4bd455b89909153b40b9c823276aefcbb06f2044618696009ca
   md5: 72e42d28960d875c7654614f8b50939a
@@ -1635,6 +1713,113 @@ packages:
   - pkg:pypi/frozenlist?source=hash-mapping
   size: 55037
   timestamp: 1752167383781
+- pypi: https://files.pythonhosted.org/packages/2f/e0/014d5d9d7a4564cf1c40b5039bc882db69fd881111e03ab3657ac0b218e2/fsspec-2025.7.0-py3-none-any.whl
+  name: fsspec
+  version: 2025.7.0
+  sha256: 8b012e39f63c7d5f10474de957f3ab793b47b45ae7d39f2fb735f8bbe25c0e21
+  requires_dist:
+  - adlfs ; extra == 'abfs'
+  - adlfs ; extra == 'adl'
+  - pyarrow>=1 ; extra == 'arrow'
+  - dask ; extra == 'dask'
+  - distributed ; extra == 'dask'
+  - pre-commit ; extra == 'dev'
+  - ruff>=0.5 ; extra == 'dev'
+  - numpydoc ; extra == 'doc'
+  - sphinx ; extra == 'doc'
+  - sphinx-design ; extra == 'doc'
+  - sphinx-rtd-theme ; extra == 'doc'
+  - yarl ; extra == 'doc'
+  - dropbox ; extra == 'dropbox'
+  - dropboxdrivefs ; extra == 'dropbox'
+  - requests ; extra == 'dropbox'
+  - adlfs ; extra == 'full'
+  - aiohttp!=4.0.0a0,!=4.0.0a1 ; extra == 'full'
+  - dask ; extra == 'full'
+  - distributed ; extra == 'full'
+  - dropbox ; extra == 'full'
+  - dropboxdrivefs ; extra == 'full'
+  - fusepy ; extra == 'full'
+  - gcsfs ; extra == 'full'
+  - libarchive-c ; extra == 'full'
+  - ocifs ; extra == 'full'
+  - panel ; extra == 'full'
+  - paramiko ; extra == 'full'
+  - pyarrow>=1 ; extra == 'full'
+  - pygit2 ; extra == 'full'
+  - requests ; extra == 'full'
+  - s3fs ; extra == 'full'
+  - smbprotocol ; extra == 'full'
+  - tqdm ; extra == 'full'
+  - fusepy ; extra == 'fuse'
+  - gcsfs ; extra == 'gcs'
+  - pygit2 ; extra == 'git'
+  - requests ; extra == 'github'
+  - gcsfs ; extra == 'gs'
+  - panel ; extra == 'gui'
+  - pyarrow>=1 ; extra == 'hdfs'
+  - aiohttp!=4.0.0a0,!=4.0.0a1 ; extra == 'http'
+  - libarchive-c ; extra == 'libarchive'
+  - ocifs ; extra == 'oci'
+  - s3fs ; extra == 's3'
+  - paramiko ; extra == 'sftp'
+  - smbprotocol ; extra == 'smb'
+  - paramiko ; extra == 'ssh'
+  - aiohttp!=4.0.0a0,!=4.0.0a1 ; extra == 'test'
+  - numpy ; extra == 'test'
+  - pytest ; extra == 'test'
+  - pytest-asyncio!=0.22.0 ; extra == 'test'
+  - pytest-benchmark ; extra == 'test'
+  - pytest-cov ; extra == 'test'
+  - pytest-mock ; extra == 'test'
+  - pytest-recording ; extra == 'test'
+  - pytest-rerunfailures ; extra == 'test'
+  - requests ; extra == 'test'
+  - aiobotocore>=2.5.4,<3.0.0 ; extra == 'test-downstream'
+  - dask[dataframe,test] ; extra == 'test-downstream'
+  - moto[server]>4,<5 ; extra == 'test-downstream'
+  - pytest-timeout ; extra == 'test-downstream'
+  - xarray ; extra == 'test-downstream'
+  - adlfs ; extra == 'test-full'
+  - aiohttp!=4.0.0a0,!=4.0.0a1 ; extra == 'test-full'
+  - cloudpickle ; extra == 'test-full'
+  - dask ; extra == 'test-full'
+  - distributed ; extra == 'test-full'
+  - dropbox ; extra == 'test-full'
+  - dropboxdrivefs ; extra == 'test-full'
+  - fastparquet ; extra == 'test-full'
+  - fusepy ; extra == 'test-full'
+  - gcsfs ; extra == 'test-full'
+  - jinja2 ; extra == 'test-full'
+  - kerchunk ; extra == 'test-full'
+  - libarchive-c ; extra == 'test-full'
+  - lz4 ; extra == 'test-full'
+  - notebook ; extra == 'test-full'
+  - numpy ; extra == 'test-full'
+  - ocifs ; extra == 'test-full'
+  - pandas ; extra == 'test-full'
+  - panel ; extra == 'test-full'
+  - paramiko ; extra == 'test-full'
+  - pyarrow ; extra == 'test-full'
+  - pyarrow>=1 ; extra == 'test-full'
+  - pyftpdlib ; extra == 'test-full'
+  - pygit2 ; extra == 'test-full'
+  - pytest ; extra == 'test-full'
+  - pytest-asyncio!=0.22.0 ; extra == 'test-full'
+  - pytest-benchmark ; extra == 'test-full'
+  - pytest-cov ; extra == 'test-full'
+  - pytest-mock ; extra == 'test-full'
+  - pytest-recording ; extra == 'test-full'
+  - pytest-rerunfailures ; extra == 'test-full'
+  - python-snappy ; extra == 'test-full'
+  - requests ; extra == 'test-full'
+  - smbprotocol ; extra == 'test-full'
+  - tqdm ; extra == 'test-full'
+  - urllib3 ; extra == 'test-full'
+  - zarr ; extra == 'test-full'
+  - zstandard ; python_full_version < '3.14' and extra == 'test-full'
+  - tqdm ; extra == 'tqdm'
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/gdk-pixbuf-2.42.12-h7b179bb_1.conda
   sha256: 3258e4112d52f376d98cd645a3c8d44af28bf0fc4bcae92231ad7a1e14694c2a
   md5: c050572442da94589ef8fe2f7ffbaa0d
@@ -1705,6 +1890,12 @@ packages:
   purls: []
   size: 662569
   timestamp: 1607113198887
+- pypi: https://files.pythonhosted.org/packages/7f/ba/de3630757c7d7fc2086aaf3994926d6b869d31586e4d0c14f1666af31b93/glfw-2.9.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.p39.p310.p311.p312.p313-none-manylinux_2_28_x86_64.whl
+  name: glfw
+  version: 2.9.0
+  sha256: 4e11271e49eb9bc53431ade022e284d5a59abeace81fe3b178db1bf3ccc0c449
+  requires_dist:
+  - glfw-preview ; extra == 'preview'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/glib-2.84.3-h89d24bf_0.conda
   sha256: a2fce828a72dbdde983908eafee6fc54f0189cb3e04cf172d83a1e9f4d11b113
   md5: 9d1844ab51651cc3d034bb55fff83b99
@@ -3904,6 +4095,19 @@ packages:
   - pkg:pypi/msgpack?source=hash-mapping
   size: 102924
   timestamp: 1749813333354
+- pypi: https://files.pythonhosted.org/packages/6d/87/f5454b3e3844bb5c37037a4f3e5e6e70a37263f06d34c2a5b62e801a5b3f/mujoco-3.3.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+  name: mujoco
+  version: 3.3.5
+  sha256: 802101bd705cb46973e2a0bc70e0d0d3581a2f6f764678bc6aa5253539ff341d
+  requires_dist:
+  - absl-py
+  - etils[epath]
+  - glfw
+  - numpy
+  - pyopengl
+  - usd-core ; extra == 'usd'
+  - pillow ; extra == 'usd'
+  requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/multidict-6.6.3-py312h178313f_0.conda
   sha256: c703d148a85ffb4f11001d31b7c4c686a46ad554eeeaa02c69da59fbf0e00dbb
   md5: f4e246ec4ccdf73e50eefb0fa359a64e
@@ -4231,7 +4435,7 @@ packages:
 - pypi: ./src/piper_control_ros2
   name: piper-control-ros2
   version: 0.0.0
-  sha256: 89d834321bdecf0a2620cd378faf8fe7ca17c5f52ed07b42c80e18b29063b228
+  sha256: 6ed06447f877c9168b3b5f754a45ca2f58fb7bc3bd49ffc668fc8716708e2d5f
   requires_dist:
   - setuptools
   editable: true
@@ -4245,12 +4449,13 @@ packages:
 - pypi: ./
   name: piper-ros
   version: 1.0.1
-  sha256: b5a2596b790f57e078522b0e62c802f28a7ccde5872d3449e5f6a44b6181c1e0
+  sha256: 4ff437ac5727114c935bd7a5bf60a5e0604d283d96e055c0bd61c40897f1c22b
   requires_dist:
   - numpy
   - r2-transformations
   - piper-control>=1.1.2
   - piper-sdk>=0.2.19
+  - mujoco
   - pytest ; extra == 'test'
   requires_python: '>=3.10'
   editable: true
@@ -4551,6 +4756,10 @@ packages:
   - pkg:pypi/pygments?source=hash-mapping
   size: 889287
   timestamp: 1750615908735
+- pypi: https://files.pythonhosted.org/packages/92/44/8634af40b0db528b5b37e901c0dc67321354880d251bf8965901d57693a5/PyOpenGL-3.1.9-py3-none-any.whl
+  name: pyopengl
+  version: 3.1.9
+  sha256: 15995fd3b0deb991376805da36137a4ae5aba6ddbb5e29ac1f35462d130a3f77
 - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.3-pyhe01879c_2.conda
   sha256: afe32182b1090911b64ac0f29eb47e03a015d142833d8a917defd65d91c99b74
   md5: aa0028616c0750c773698fdc254b2b8d
