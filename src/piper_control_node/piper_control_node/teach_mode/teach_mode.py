@@ -26,108 +26,100 @@ class GravityTorqueSample:
   torque: float
 
 
-def grav_comp_adjustment_fn(input_array, *params):
+def grav_comp_adjustment_fn(model_inputs: np.ndarray, *params) -> np.ndarray:
   """Enhanced gravity compensation using joint configuration features.
 
   Args:
-    input_array: Flattened array containing [sim_torques(6), joint_angles(6), joint_idx(1)]
+    model_inputs: 2D array of shape (n_samples, 13) containing flattened data
     *params: Variable number of parameters that scipy will optimize
 
   Returns:
-    Adjusted gravity compensation torque for the specified joint
+    Array of adjusted gravity compensation torques for all samples
   """
-  # Unpack the flattened input array
-  sim_torques = input_array[:6]
-  joint_angles = input_array[6:12]
-  joint_idx = int(input_array[12])
+  # scipy passes us the entire dataset at once for vectorized operation
+  if model_inputs.ndim == 1:
+    # Single sample case (when called from predict)
+    model_inputs = model_inputs.reshape(1, -1)
 
-  params = np.array(params)
-
-  # Build feature vector using helper function
-  features = _build_gravity_features(sim_torques, joint_angles, joint_idx)
+  # Build feature matrix for all samples at once
+  features_matrix = _build_model_features(model_inputs)
 
   # Ensure we have the right number of parameters
-  if len(params) != len(features):
-    raise ValueError(f"Expected {len(features)} parameters, got {len(params)}")
+  params_array = np.array(params)
+  if len(params_array) != features_matrix.shape[1]:
+    raise ValueError(
+        f"Expected {features_matrix.shape[1]} parameters, got "
+        "{len(params_array)}"
+    )
 
-  return np.dot(features, params)
+  # (n_samples, n_features) @ (n_features,) -> (n_samples,)
+  results = features_matrix @ params_array
+
+  return results if results.shape[0] > 1 else results[0]
 
 
-def _build_gravity_features(sim_torques, joint_angles, joint_idx):
-  """Build feature vector for enhanced gravity compensation.
-
-  Separate function to make it easy to experiment by commenting out feature
-  groups.
+def _build_model_features(
+    model_inputs: np.ndarray,
+) -> np.ndarray:
+  """Build feature matrix for enhanced gravity compensation (vectorized).
 
   Args:
-    sim_torques: Array of all 6 MuJoCo predicted torques
-    joint_angles: Array of 6 joint angles
-    joint_idx: Index of joint we're predicting for (0-5)
+    model_inputs: Array of shape (n_samples, 13) containing sim_torques,
+      joint_angles, and joint_idx for the joint being predicted.
+      torques for each sample.
 
   Returns:
-    numpy array of features
+    numpy array of shape (n_samples, n_features)
   """
-  features = []
+  # Unpack all samples at once
+  sim_torques = model_inputs[:, :6]  # (n_samples, 6)
+  joint_angles = model_inputs[:, 6:12]  # (n_samples, 6)
+  joint_idx = model_inputs[:, 12].astype(int)  # (n_samples,)
 
-  # Get the specific torque for this joint
-  sim_torque = sim_torques[joint_idx]
+  features_list = []
+  n_samples = sim_torques.shape[0]  # scalar
+
+  # Get the specific torque for each sample's joint using advanced indexing.
+  sim_torque = sim_torques[np.arange(n_samples), joint_idx]  # (n_samples,)
 
   # Base features: powers of sim_torque for this joint
-  features.extend(
-      [
-          1.0,  # bias
-          sim_torque,
-          sim_torque**2,
-          sim_torque**3,
-      ]
-  )
+  features_list.append(np.ones(n_samples))  # bias; (n_samples,)
+  features_list.append(sim_torque)  # (n_samples,)
+  features_list.append(sim_torque**2)  # (n_samples,)
+  features_list.append(sim_torque**3)  # (n_samples,)
 
-  # # Joint angle features (trigonometric for periodic/smooth behavior)
-  # # All joint angles can affect any joint's gravity compensation
-  # for angle in joint_angles:
-  #   features.extend(
-  #       [
-  #           np.sin(angle),
-  #           np.cos(angle),
-  #           np.sin(2 * angle),  # higher harmonics for finer detail
-  #           np.cos(2 * angle),
-  #       ]
-  #   )
+  # Joint angle features (trigonometric for periodic/smooth behavior)
+  # All joint angles can affect any joint's gravity compensation
+  # features_list.append(np.sin(joint_angles))  # (n_samples, 6)
+  # features_list.append(np.cos(joint_angles))  # (n_samples, 6)
 
-  # # Cross-terms: this joint's sim_torque modulated by all joint angles
-  # for angle in joint_angles:
-  #   features.extend(
-  #       [
-  #           sim_torque * np.sin(angle),
-  #           sim_torque * np.cos(angle),
-  #       ]
-  #   )
+  # Higher freqs for finer detail
+  # features_list.append(np.sin(3 * joint_angles))  # (n_samples, 6)
+  # features_list.append(np.cos(3 * joint_angles))  # (n_samples, 6)
 
-  # # Inter-joint torque coupling: other joints' torques can affect this joint
-  # for i, other_sim_torque in enumerate(sim_torques):
-  #   if i != joint_idx:  # Don't include self, already covered in base features
-  #     features.extend(
-  #         [
-  #             other_sim_torque,  # Linear coupling
-  #             other_sim_torque
-  #             * np.sin(
-  #                 joint_angles[joint_idx]
-  #             ),  # Modulated by this joint's angle
-  #             other_sim_torque * np.cos(joint_angles[joint_idx]),
-  #         ]
-  #     )
+  # Cross-terms: this joint's sim_torque modulated by all joint angles
+  # # Vectorized: sim_torque broadcasted against all joint angles
+  # sim_torque_expanded = sim_torque[:, np.newaxis]  # (n_samples, 1)
+  # features_list.append(sim_torque_expanded * np.sin(joint_angles))  # (n_samples, 6)
+  # features_list.append(sim_torque_expanded * np.cos(joint_angles))  # (n_samples, 6)
 
-  # # Joint coupling terms (some joints work together for gravity compensation)
-  # features.extend(
-  #     [
-  #         np.sin(joint_angles[1])
-  #         * np.cos(joint_angles[2]),  # shoulder-elbow coupling
-  #         joint_angles[0] * joint_angles[1],  # base-shoulder coupling
-  #         np.sin(joint_angles[1] + joint_angles[2]),  # combined arm pose
-  #     ]
-  # )
+  # Inter-joint torque coupling: other joints' torques can affect this joint
+  # # Vectorized: process all joints at once, mask out self-coupling later
+  # this_joint_angles = joint_angles[np.arange(n_samples), joint_idx]  # (n_samples,)
+  # this_joint_angles_expanded = this_joint_angles[:, np.newaxis]  # (n_samples, 1)
+  # features_list.append(sim_torques)  # Linear coupling for all joints  # (n_samples, 6)
+  # features_list.append(sim_torques * np.sin(this_joint_angles_expanded))  # (n_samples, 6)
+  # features_list.append(sim_torques * np.cos(this_joint_angles_expanded))  # (n_samples, 6)
 
-  return np.array(features)
+  # Joint coupling terms (some joints work together for gravity compensation)
+  # features_list.append(np.sin(joint_angles[:, 1:2]) * np.cos(joint_angles[:, 2:3]))  # shoulder-elbow coupling  # (n_samples, 1)
+  # features_list.append(joint_angles[:, 0:1] * joint_angles[:, 1:2])  # base-shoulder coupling  # (n_samples, 1)
+  # features_list.append(np.sin(joint_angles[:, 1:2] + joint_angles[:, 2:3]))  # combined arm pose  # (n_samples, 1)
+
+  # Stack features into matrix: (n_features, n_samples) -> (n_samples, n_features)
+  features_matrix = np.column_stack(features_list)  # (n_samples, n_features)
+
+  return features_matrix
 
 
 class _SimGravityTorquePrediction:
@@ -197,10 +189,10 @@ class _SimGravityTorquePrediction:
     for i in range(len(result)):
       if i in self._grav_comp_params:
         params = self._grav_comp_params[i]
-
-        # Create flattened input array: sim_torques(6) + joint_angles(6) + joint_idx(1)
-        input_array = np.concatenate([sim_torques, np.array(joint_angles), [i]])
-        result[i] = grav_comp_adjustment_fn(input_array, *params)
+        model_inputs = np.concatenate(
+            [sim_torques, np.array(joint_angles), [i]]
+        )
+        result[i] = grav_comp_adjustment_fn(model_inputs, *params)
 
     assert len(result) == len(self._joint_ids)
     return result
@@ -243,65 +235,52 @@ def _compute_gravity_model(
   # mode functionality.
   from scipy import optimize  # type: ignore pylint: disable=import-outside-toplevel
 
+  # Load mapping from joint_idx to GravityTorqueSample
   real_gravity = _load_sampled_gravity(grav_torques_file_path)
+
+  # Create a predictor without any learned parameters to get a sim-only baseline
+  # prediction, which we'll add as input features for the regression.
   sim_gravity = _SimGravityTorquePrediction(
       piper_model_path, {}, arm_orientation
   )
 
+  # Dictionary mapping joint_idx to array of learned model parameters.
   per_joint_params = {}
 
+  # Iterate over each joint's samples and fit a per-joint model.
   for joint_idx, samples in real_gravity.items():
     real_torques = []
-    input_data_list = []
+    input_arrays = []
 
     for sample in samples:
-      real_torques.append(sample.torque)
+      real_torques.append(sample.torque)  # (n, 6)
+      joint_angles = list(sample.joint_configuration)  # (n, 6)
+      model_torques = sim_gravity.predict(joint_angles)  # (n, 6)
+      sim_torques = np.array(model_torques)  # (n, 6)
 
-      desired_angles = list(sample.joint_configuration)
-      model_torques = sim_gravity.predict(desired_angles)
-      model_torque = model_torques[joint_idx]
-
-      # Pack sim_torque and joint_angles as tuple for enhanced function
-      input_data_list.append((model_torque, np.array(desired_angles)))
+      # Concatenate sim_torques(6) + joint_angles(6) + joint_idx(1) -> (13,).
+      model_inputs = np.concatenate(
+          [sim_torques, np.array(joint_angles), [joint_idx]]
+      )
+      input_arrays.append(model_inputs)
 
     # Convert to format expected by curve_fit
     real_torques = np.array(real_torques)
+    x_data = np.array(input_arrays)  # (n, 13)
 
-    # Calculate expected number of features by calling the helper function
-    # Use first sample to determine feature count
-    sample_sim_torque, sample_joint_angles = input_data_list[0]
-    # Create dummy sim_torques array for feature building (we need all torques)
-    dummy_sim_torques = np.array([sample_sim_torque] * len(sample_joint_angles))
-    sample_features = _build_gravity_features(
-        dummy_sim_torques, sample_joint_angles, joint_idx
-    )
-    n_total_features = len(sample_features)
+    # Calculate expected number of features using first sample
+    sample_features = _build_model_features(x_data[:1])
+    n_total_features = sample_features.shape[1]
 
     # Initial guess: mostly zeros except for the linear sim_torque term
-    p0_enhanced = np.zeros(n_total_features)
-    p0_enhanced[1] = 1.0  # sim_torque linear term (index 1 in feature vector)
+    p0 = np.zeros(n_total_features)
+    p0[1] = 1.0  # sim_torque linear term (index 1 in feature vector)
 
-    # Prepare input data for grav comp function - concatenate into flat arrays
-    input_arrays = []
-    for sample in samples:
-      desired_angles = list(sample.joint_configuration)
-      model_torques = sim_gravity.predict(desired_angles)
-      sim_torques_array = np.array(model_torques)
-
-      # Concatenate sim_torques(6) + joint_angles(6) + joint_idx(1) into single array
-      input_array = np.concatenate(
-          [sim_torques_array, np.array(desired_angles), [joint_idx]]
-      )
-      input_arrays.append(input_array)
-
-    # Convert to 2D array for scipy
-    x_data = np.array(input_arrays)
-    breakpoint()
     opt_params = optimize.curve_fit(
         grav_comp_adjustment_fn,
         x_data,
         real_torques,
-        p0=p0_enhanced,
+        p0=p0,
         maxfev=2000,  # Increase max function evaluations for complex fit
     )[0]
 
