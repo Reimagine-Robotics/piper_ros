@@ -15,6 +15,12 @@ Usage examples:
 Gather data for single upright arm:
   $ python run_gather_data.py --mode=collect_data --arm_orientation=upright
 
+Append to existing dataset:
+  $ python run_gather_data.py --mode=collect_data --append
+
+Append to existing poses:
+  $ python run_gather_data.py --mode=collect_poses --append
+
 Dump list of poses to visit:
   $ python run_gather_data.py --mode=collect_poses \
     --can_port=can1 \
@@ -25,7 +31,8 @@ Gather data for left/right arm:
   $ python run_gather_data.py --mode=collect_data \
     --can_port=can1 \
     --arm_orientation=left \
-    --poses_path=/tmp/left_poses.json
+    --poses_path=/tmp/left_poses.json \
+    --append
 """
 
 import dataclasses
@@ -70,6 +77,12 @@ _ARM_ORIENTATION = flags.DEFINE_enum(
     "Arm mounting orientation: upright, left, or right.",
 )
 
+_APPEND = flags.DEFINE_boolean(
+    "append",
+    False,
+    "Whether to append to existing dataset instead of overwriting it.",
+)
+
 
 @dataclasses.dataclass
 class GravityTorqueSample:
@@ -78,6 +91,7 @@ class GravityTorqueSample:
   joint_configuration: np.ndarray
   joint_idx: int
   torque: float
+  target_joint_angles: np.ndarray
 
 
 class GravityTorqueSampler:
@@ -94,11 +108,7 @@ class GravityTorqueSampler:
     self._robot = robot
     self._controller = controller
 
-    min_joints = np.array(piper_interface.JOINT_LIMITS_RAD["min"]) + 0.2
-    max_joints = np.array(piper_interface.JOINT_LIMITS_RAD["max"]) - 0.2
-    self._target_joint_angles = np.clip(
-        target_joint_angles, min_joints, max_joints
-    )
+    self._target_joint_angles = clip_pose_to_joint_limits(target_joint_angles)
 
     self._p_gains = p_gains
     self._d_gains = d_gains
@@ -181,20 +191,19 @@ class GravityTorqueSampler:
       stable_torques = np.mean(stable_torques, axis=0)
       stable_joints = np.mean(stable_joint_configs, axis=0)
 
+      # TODO(jscholz) verify averaging stable_joint_configs has no wrap-around
+
+      # TODO(jscholz) discard sample if torque variance above a threshold
+
       return [
           GravityTorqueSample(
               joint_configuration=stable_joints,
               joint_idx=i,
               torque=float(stable_torques[i]),
+              target_joint_angles=self._target_joint_angles,
           )
           for i in range(6)
       ]
-
-
-def get_rest_position_for_orientation(orientation: str) -> np.ndarray:
-  """Get the appropriate rest position based on arm orientation."""
-  arm_orientation = piper_control.ArmOrientations.from_string(orientation)
-  return np.array(arm_orientation.rest_position)
 
 
 def get_gravity_compensation_gains(
@@ -207,7 +216,7 @@ def get_gravity_compensation_gains(
     d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
   elif orientation in ["left", "right"]:
     # Gains for left/right mounted arms (may need tuning)
-    p_gains = np.array([10.0, 15.0, 12.0, 3.0, 3.0, 2.0])
+    p_gains = np.array([15.0, 15.0, 12.0, 3.0, 3.0, 2.0])
     d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
   else:
     raise ValueError(f"Unknown arm orientation: {orientation}")
@@ -264,12 +273,38 @@ def collect_poses_interactively(
   return collected_poses
 
 
-def save_poses_to_json(poses: list[np.ndarray], filename: str) -> None:
-  """Save poses to JSON file."""
-  poses_list = [pose.tolist() for pose in poses]
+def save_json(
+    data: list,
+    filename: str,
+    append: bool = False,
+) -> None:
+  """Save data to JSON file with optional append functionality.
+
+  Args:
+    data: List of data to save
+    filename: Path to JSON file
+    append: Whether to append to existing file or overwrite
+  """
+  if append:
+    # Load existing data if file exists
+    existing_data = []
+    try:
+      with open(filename, "r", encoding="utf-8") as f:
+        existing_data = json.load(f)
+    except FileNotFoundError:
+      pass  # Will create new file
+
+    # Combine existing and new data
+    all_data = existing_data + data
+    print(f"Appending {len(data)} items to existing {len(existing_data)} items")
+    print(f"Total items after append: {len(all_data)}")
+  else:
+    print(f"Saving {len(data)} items to file...")
+    all_data = data
+
   with open(filename, "w", encoding="utf-8") as f:
-    json.dump(poses_list, f, indent=2)
-  print(f"Poses saved to: {filename}")
+    json.dump(all_data, f, indent=4, sort_keys=True)
+  print(f"Data saved to: {filename}")
 
 
 def load_poses_from_json(filename: str) -> list[np.ndarray]:
@@ -284,6 +319,47 @@ def load_poses_from_json(filename: str) -> list[np.ndarray]:
     print(f"Poses file not found: {filename}")
     print("Using default hardcoded poses instead.")
     return get_default_poses()
+
+
+def load_existing_target_poses_from_data_file(
+    filename: str,
+) -> list[np.ndarray]:
+  """Load target poses from existing data samples file."""
+  try:
+    with open(filename, "r", encoding="utf-8") as f:
+      data = json.load(f)
+
+    # Extract unique target poses from data samples
+    seen_poses = []
+    target_poses = []
+    for item in data:
+      if isinstance(item, dict) and "target_joint_angles" in item:
+        pose = np.array(item["target_joint_angles"])
+        # Check if we've already seen this target pose
+        is_duplicate = any(
+            np.allclose(pose, existing, atol=0.001) for existing in seen_poses
+        )
+        if not is_duplicate:
+          seen_poses.append(pose)
+          target_poses.append(pose)
+
+    print(
+        f"Found {len(target_poses)} unique target poses in existing data file: "
+        f"{filename}"
+    )
+    return target_poses
+  except FileNotFoundError:
+    return []
+  except (json.JSONDecodeError, KeyError, TypeError):
+    print(f"Warning: could not parse existing data file: {filename}")
+    return []
+
+
+def clip_pose_to_joint_limits(pose: np.ndarray) -> np.ndarray:
+  """Apply the same joint limit clipping that GravityTorqueSampler uses."""
+  min_joints = np.array(piper_interface.JOINT_LIMITS_RAD["min"]) + 0.2
+  max_joints = np.array(piper_interface.JOINT_LIMITS_RAD["max"]) - 0.2
+  return np.clip(pose, min_joints, max_joints)
 
 
 def get_default_poses() -> list[np.ndarray]:
@@ -357,7 +433,9 @@ def generate_samples(
   return result
 
 
-def export(samples: Sequence[GravityTorqueSample], filename: str) -> None:
+def export(
+    samples: Sequence[GravityTorqueSample], filename: str, append: bool = False
+) -> None:
   serialised_samples = []
   for s in samples:
     serialised_samples.append(
@@ -365,11 +443,11 @@ def export(samples: Sequence[GravityTorqueSample], filename: str) -> None:
             "joints_cfg": list(s.joint_configuration),
             "joint_idx": s.joint_idx,
             "grav_comp_torque": s.torque,
+            "target_joint_angles": list(s.target_joint_angles),
         }
     )
 
-  with open(filename, "w", encoding="utf-8") as f:
-    json.dump(serialised_samples, f, indent=4, sort_keys=True)
+  save_json(serialised_samples, filename, append)
 
 
 def main(_):
@@ -403,7 +481,10 @@ def main(_):
     robot.set_installation_pos(piper_interface.ArmInstallationPos.RIGHT)
 
   # Get the appropriate rest position for this orientation
-  rest_position = get_rest_position_for_orientation(_ARM_ORIENTATION.value)
+  arm_orientation = piper_control.ArmOrientations.from_string(
+      _ARM_ORIENTATION.value
+  )
+  rest_position = np.array(arm_orientation.rest_position)
 
   # Set up robot for manual manipulation (low gains)
   print("resetting arm")
@@ -434,10 +515,12 @@ def main(_):
       collected_poses = collect_poses_interactively(robot)
 
       if collected_poses:
-        save_poses_to_json(collected_poses, _POSES_PATH.value)
+        poses_list = [pose.tolist() for pose in collected_poses]
+        save_json(poses_list, _POSES_PATH.value, append=_APPEND.value)
         print("\nTo use these poses for data collection, run:")
         print(
-            f"python {__file__} --mode=collect_data --poses_path={_POSES_PATH.value}"
+            f"python {__file__} --mode=collect_data "
+            f"--poses_path={_POSES_PATH.value}"
         )
       else:
         print("No poses collected.")
@@ -448,6 +531,33 @@ def main(_):
     # Load poses from file if it exists
     sample_poses = load_poses_from_json(_POSES_PATH.value)
 
+    # If appending to an existing dataset, skip poses that are already collected
+    if _APPEND.value:
+      existing_target_poses = load_existing_target_poses_from_data_file(
+          _OUT_PATH.value
+      )
+      # Filter out poses that already exist as targets in the data
+      new_poses = []
+      skipped = 0
+      for pose in sample_poses:
+        # Apply the same clipping that GravityTorqueSampler will apply
+        clipped_pose = clip_pose_to_joint_limits(pose)
+        is_duplicate = any(
+            np.allclose(clipped_pose, existing, atol=0.001)
+            for existing in existing_target_poses
+        )
+        if is_duplicate:
+          skipped += 1
+        else:
+          new_poses.append(pose)
+
+      if skipped > 0:
+        print(
+            f"Skipping {skipped} poses already collected; {len(new_poses)} "
+            "new poses to collect."
+        )
+      sample_poses = new_poses
+
     # Move the arm joints using MIT mode controller for data collection
     with piper_control.MitJointPositionController(
         robot,
@@ -456,12 +566,15 @@ def main(_):
         rest_position=list(rest_position),
     ) as controller:
 
-      all_samples = generate_samples(
-          robot, controller, sample_poses, _ARM_ORIENTATION.value
-      )
-      export(all_samples, _OUT_PATH.value)
-      print(all_samples)
-      print(f"Exported to: {_OUT_PATH.value}")
+      if not sample_poses:
+        print("No new poses to collect. Nothing to do.")
+      else:
+        all_samples = generate_samples(
+            robot, controller, sample_poses, _ARM_ORIENTATION.value
+        )
+        export(all_samples, _OUT_PATH.value, append=_APPEND.value)
+        print(all_samples)
+        print(f"Exported to: {_OUT_PATH.value}")
   else:
     print("Invalid mode selected.")
 

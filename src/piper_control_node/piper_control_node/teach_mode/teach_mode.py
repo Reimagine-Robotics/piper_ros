@@ -72,52 +72,60 @@ def _build_model_features(
     numpy array of shape (n_samples, n_features)
   """
   # Unpack all samples at once
-  sim_torques = model_inputs[:, :6]  # (n_samples, 6)
-  joint_angles = model_inputs[:, 6:12]  # (n_samples, 6)
-  joint_idx = model_inputs[:, 12].astype(int)  # (n_samples,)
+  sim_torques = model_inputs[:, :6]  # (n, 6)
+  joint_angles = model_inputs[:, 6:12]  # (n, 6)
+  joint_idx = model_inputs[:, 12].astype(int)  # (n,)
 
   features_list = []
   n_samples = sim_torques.shape[0]  # scalar
 
   # Get the specific torque for each sample's joint using advanced indexing.
-  sim_torque = sim_torques[np.arange(n_samples), joint_idx]  # (n_samples,)
+  sim_torque = sim_torques[np.arange(n_samples), joint_idx]  # (n,)
+
+  this_joint_angles = joint_angles[np.arange(n_samples), joint_idx]  # (n,)
+  this_joint_angles = this_joint_angles[:, np.newaxis]  # (n, 1)
 
   # Base features: powers of sim_torque for this joint
   features_list.append(np.ones(n_samples))  # bias; (n_samples,)
-  features_list.append(sim_torque)  # (n_samples,)
-  features_list.append(sim_torque**2)  # (n_samples,)
-  features_list.append(sim_torque**3)  # (n_samples,)
+  features_list.append(sim_torque)  # (n,)
+  features_list.append(sim_torque**2)  # (n,)
+  features_list.append(sim_torque**3)  # (n,)
 
-  # Joint angle features (trigonometric for periodic/smooth behavior)
-  # All joint angles can affect any joint's gravity compensation
-  # features_list.append(np.sin(joint_angles))  # (n_samples, 6)
-  # features_list.append(np.cos(joint_angles))  # (n_samples, 6)
+  # This joint's angle features
+  features_list.append(np.sin(this_joint_angles))  # (n, 1)
+  features_list.append(np.cos(this_joint_angles))  # (n, 1)
 
-  # Higher freqs for finer detail
-  # features_list.append(np.sin(3 * joint_angles))  # (n_samples, 6)
-  # features_list.append(np.cos(3 * joint_angles))  # (n_samples, 6)
+  # # All joint angle features
+  # features_list.append(np.sin(joint_angles))  # (n, 6)
+  # features_list.append(np.cos(joint_angles))  # (n, 6)
 
-  # Cross-terms: this joint's sim_torque modulated by all joint angles
-  # # Vectorized: sim_torque broadcasted against all joint angles
-  # sim_torque_expanded = sim_torque[:, np.newaxis]  # (n_samples, 1)
-  # features_list.append(sim_torque_expanded * np.sin(joint_angles))  # (n_samples, 6)
-  # features_list.append(sim_torque_expanded * np.cos(joint_angles))  # (n_samples, 6)
+  # # Higher freqs for finer detail
+  # features_list.append(np.sin(3 * joint_angles))  # (n, 6)
+  # features_list.append(np.cos(3 * joint_angles))  # (n, 6)
 
-  # Inter-joint torque coupling: other joints' torques can affect this joint
-  # # Vectorized: process all joints at once, mask out self-coupling later
-  # this_joint_angles = joint_angles[np.arange(n_samples), joint_idx]  # (n_samples,)
-  # this_joint_angles_expanded = this_joint_angles[:, np.newaxis]  # (n_samples, 1)
-  # features_list.append(sim_torques)  # Linear coupling for all joints  # (n_samples, 6)
-  # features_list.append(sim_torques * np.sin(this_joint_angles_expanded))  # (n_samples, 6)
-  # features_list.append(sim_torques * np.cos(this_joint_angles_expanded))  # (n_samples, 6)
+  # # Cross-terms: this joint's sim_torque modulated by all joint angles
+  # sim_torque_expanded = sim_torque[:, np.newaxis]  # (n, 1)
+  # features_list.append(sim_torque_expanded * np.sin(joint_angles))  # (n, 6)
+  # features_list.append(sim_torque_expanded * np.cos(joint_angles))  # (n, 6)
 
-  # Joint coupling terms (some joints work together for gravity compensation)
-  # features_list.append(np.sin(joint_angles[:, 1:2]) * np.cos(joint_angles[:, 2:3]))  # shoulder-elbow coupling  # (n_samples, 1)
-  # features_list.append(joint_angles[:, 0:1] * joint_angles[:, 1:2])  # base-shoulder coupling  # (n_samples, 1)
-  # features_list.append(np.sin(joint_angles[:, 1:2] + joint_angles[:, 2:3]))  # combined arm pose  # (n_samples, 1)
+  # # Inter-joint torque coupling: other joints' torques can affect this joint
+  # features_list.append(sim_torques)  # Linear coupling for all joints  # (n, 6)
+  # features_list.append(sim_torques * np.sin(this_joint_angles))
+  # features_list.append(sim_torques * np.cos(this_joint_angles))
 
-  # Stack features into matrix: (n_features, n_samples) -> (n_samples, n_features)
-  features_matrix = np.column_stack(features_list)  # (n_samples, n_features)
+  # # Joint coupling terms (some joints work together for gravity compensation)
+  # features_list.append(
+  #     np.sin(joint_angles[:, 1:2]) * np.cos(joint_angles[:, 2:3])
+  # )  # shoulder-elbow coupling  # (n, 1)
+  # features_list.append(
+  #     joint_angles[:, 0:1] * joint_angles[:, 1:2]
+  # )  # base-shoulder coupling  # (n, 1)
+  # features_list.append(
+  #     np.sin(joint_angles[:, 1:2] + joint_angles[:, 2:3])
+  # )  # combined arm pose  # (n, 1)
+
+  # Stack features into matrix: (n_features, n_samps) -> (n_samps, n_features)
+  features_matrix = np.column_stack(features_list)  # (n, n_features)
 
   return features_matrix
 
@@ -275,19 +283,30 @@ def _compute_gravity_model(
     # Initial guess: mostly zeros except for the linear sim_torque term
     p0 = np.zeros(n_total_features)
     p0[1] = 1.0  # sim_torque linear term (index 1 in feature vector)
+    # p0 = np.random.uniform(-1, 1, n_total_features)
 
-    opt_params = optimize.curve_fit(
+    fit = optimize.curve_fit(
         grav_comp_adjustment_fn,
         x_data,
         real_torques,
         p0=p0,
         maxfev=2000,  # Increase max function evaluations for complex fit
-    )[0]
+        full_output=True,  # Return additional info including residuals
+    )
+    opt_params = fit[0]  # Extract optimized parameters
+    infodict = fit[2]  # Info dict with residuals and other details
+    mesg = fit[3]  # Message about convergence
+    ier = fit[4]  # Integer flag about convergence
 
     print(
         f"Joint {joint_idx}: Using gravity compensation model with "
         f"{len(opt_params)} parameters"
     )
+
+    print(f"Joint {joint_idx} convergence: {mesg} (ier={ier})")
+    # print("Residuals:", infodict["fvec"])
+    print("Residuals (sum):", np.abs(infodict["fvec"]).sum())
+    print("Num func evals:", infodict["nfev"], "\n")
 
     per_joint_params[joint_idx] = opt_params
 
