@@ -41,13 +41,15 @@ piper_connect.find_ports()
 To start the Piper Control Node:
 
 ```bash
-ros2 run piper_control_node piper_control_node
+ros2 run piper_control_ros2 piper_control_node
+# Or using pixi
+pixi run piper_control_node
 ```
 
 To start an arm under the namespace "piper":
 
 ```bash
-ros2 run piper_control_node piper_control_node --ros-args -p namespace:=piper
+ros2 run piper_control_ros2 piper_control_node --ros-args -p namespace:=piper
 ```
 
 ### Viewing Topics

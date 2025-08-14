@@ -13,6 +13,7 @@ freely.
 import dataclasses
 import json
 from typing import Mapping, Sequence
+import mujoco
 
 import numpy as np
 from piper_control import piper_control, piper_interface
@@ -139,10 +140,6 @@ class _SimGravityTorquePrediction:
       grav_comp_params: Mapping[int, Sequence[float]],
       arm_orientation: str = "upright",
   ):
-    # JIT import of mujoco to not force mujoco install for piper_ros users that
-    # don't use teach mode functionality.
-    import mujoco  # type: ignore pylint: disable=import-outside-toplevel
-
     self._model = mujoco.MjModel.from_xml_path(model_path)
 
     # Set gravity vector based on arm orientation using new system
@@ -151,7 +148,6 @@ class _SimGravityTorquePrediction:
     print(f"Set gravity vector for {arm_orientation} orientation: {gravity}")
 
     self._data = mujoco.MjData(self._model)
-    self._mj_forward_fn = mujoco.mj_forward
 
     self._grav_comp_params = grav_comp_params
 
@@ -187,7 +183,7 @@ class _SimGravityTorquePrediction:
       self._data.qvel[:] = 0.0
 
     # Propagate the changes through the simulation
-    self._mj_forward_fn(self._model, self._data)
+    mujoco.mj_forward(self._model, self._data)
     result = [self._data.qfrc_bias[ji] for ji in self._joint_ids]
 
     # Get all sim torques as numpy array
