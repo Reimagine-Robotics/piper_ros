@@ -35,3 +35,14 @@ colcon-common-extensions = ">=0.3.0,<0.4"
 piper_control = { git = "https://github.com/Reimagine-Robotics/piper_control/", tag = "v1.1.3" }
 piper_ros     = { path = ".", editable = true }
 mujoco = ">=3.3.5, <4"
+
+# A lightweight environment for linting and formatting
+[feature.lint.dependencies]
+pre-commit = ">=4.3.0,<5"
+pylint = ">=3.3.8,<4"
+
+[feature.lint.tasks]
+lint = "pre-commit run --all-files"
+
+[environments]
+lint = { features = ["lint"], no-default-feature = true }

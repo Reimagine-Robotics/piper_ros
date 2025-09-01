@@ -45,12 +45,16 @@ class PuppeteeringNode(Node):
 
     # Publish joint commands to the puppet robot
     self.puppet_joint_pub = self.create_publisher(
-        JointState, f"{self.puppet_ns}/joint_positions_cmd", 10
+        JointState,
+        f"{self.puppet_ns}/joint_positions_cmd",
+        10,
     )
 
     # Publish gripper commands to the puppet robot
     self.puppet_gripper_pub = self.create_publisher(
-        JointState, f"{self.puppet_ns}/gripper_cmd", 10
+        JointState,
+        f"{self.puppet_ns}/gripper_cmd",
+        10,
     )
 
   def joint_callback(self, msg: JointState) -> None:

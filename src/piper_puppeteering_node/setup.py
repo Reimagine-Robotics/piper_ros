@@ -1,3 +1,5 @@
+"""Setup script for the piper_puppeteering_node package."""
+
 from setuptools import find_packages, setup
 
 package_name = "piper_puppeteering_node"
@@ -25,7 +27,7 @@ setup(
     license="MIT",
     entry_points={
         "console_scripts": [
-            "piper_puppeteering_node = piper_puppeteering_node.puppeteering_node:main",
+            "piper_puppeteering_node = piper_puppeteering_node.puppeteering_node:main",  # pylint: disable=line-too-long
         ],
     },
 )
