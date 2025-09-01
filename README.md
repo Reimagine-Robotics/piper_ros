@@ -13,6 +13,12 @@ Make sure you have [pixi](https://pixi.sh/latest/#installation) installed.
 pixi install
 ```
 
+To build the ROS 2 packages
+
+```bash
+pixi run build
+```
+
 ### Manual Install
 
   1.  Install `can-utils` and `ethtool`:
