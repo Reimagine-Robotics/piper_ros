@@ -19,6 +19,14 @@ To build the ROS 2 packages
 pixi run build
 ```
 
+#### Linting
+
+To lint the codebase, run:
+
+```bash
+pixi run lint
+```
+
 ### Manual Install
 
   1.  Install `can-utils` and `ethtool`:
