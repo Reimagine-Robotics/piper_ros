@@ -1,4 +1,5 @@
 target-version = "py312"
+indent-width = 2
 
 [lint]
 extend-select = [
@@ -16,6 +17,7 @@ extend-select = [
   # Ruff-specific rules
   "RUF",
 ]
+
 # line-length = 88
 ignore = ["E501"]
 

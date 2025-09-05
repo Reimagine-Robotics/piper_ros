@@ -19,29 +19,29 @@ from setuptools import find_packages, setup
 package_name = "piper_control_ros2"
 
 setup(
-    name=package_name,
-    version="0.0.0",
-    packages=find_packages(exclude=["test"]),
-    data_files=[
-        (
-            "share/ament_index/resource_index/packages",
-            ["resource/" + package_name],
-        ),
-        ("share/" + package_name, ["package.xml"]),
-        (
-            os.path.join("share", package_name, "data"),
-            ["piper_control_ros2/teach_mode/piper_grav_comp.xml"],
-        ),
+  name=package_name,
+  version="0.0.0",
+  packages=find_packages(exclude=["test"]),
+  data_files=[
+    (
+      "share/ament_index/resource_index/packages",
+      ["resource/" + package_name],
+    ),
+    ("share/" + package_name, ["package.xml"]),
+    (
+      os.path.join("share", package_name, "data"),
+      ["piper_control_ros2/teach_mode/piper_grav_comp.xml"],
+    ),
+  ],
+  install_requires=["setuptools"],
+  zip_safe=True,
+  maintainer="jscholz",
+  maintainer_email="jscholz@reimaginerobotics.ai",
+  description="A Python interface to the Piper robot.",
+  license="MIT",
+  entry_points={
+    "console_scripts": [
+      "piper_control_node = piper_control_ros2.piper_control_node:main",
     ],
-    install_requires=["setuptools"],
-    zip_safe=True,
-    maintainer="jscholz",
-    maintainer_email="jscholz@reimaginerobotics.ai",
-    description="A Python interface to the Piper robot.",
-    license="MIT",
-    entry_points={
-        "console_scripts": [
-            "piper_control_node = piper_control_ros2.piper_control_node:main",
-        ],
-    },
+  },
 )
