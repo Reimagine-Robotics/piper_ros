@@ -34,3 +34,4 @@ colcon-common-extensions = ">=0.3.0,<0.4"
 [pypi-dependencies]
 piper_control = { git = "https://github.com/Reimagine-Robotics/piper_control/", branch = "main" }
 piper_ros     = { path = ".", editable = true }
+mujoco = ">=3.3.5, <4"
