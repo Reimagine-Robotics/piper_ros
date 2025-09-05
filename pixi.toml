@@ -11,7 +11,7 @@ name = "pixi-build-python"
 version = "0.1.*"
 
 [workspace]
-authors   = ["JafarAbdi <jafar.uruc@gmail.com>"]
+authors   = ["JafarUruc <jafar@reimaginerobotics.ai>"]
 channels  = ["conda-forge", "https://prefix.dev/robostack-jazzy"]
 platforms = ["linux-64"]
 preview = ["pixi-build"]
