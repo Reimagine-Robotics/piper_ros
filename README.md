@@ -5,12 +5,26 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
 
 ## Installation
 
-## Manual Install
+### pixi Install (dev and testing)
 
-  1.  Install `can-utils`:
+Make sure you have [pixi](https://pixi.sh/latest/#installation) installed.
+
+```bash
+pixi install
+```
+
+To build the ROS 2 packages
+
+```bash
+pixi run build
+```
+
+### Manual Install
+
+  1.  Install `can-utils` and `ethtool`:
 
       ```bash
-      sudo apt install -y can-utils
+      sudo apt install -y can-utils ethtool
       ```
 
   2.  Install `piper_control`:
@@ -24,27 +38,3 @@ piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
       ```bash
       pip install .
       ```
-
-## Conda Install (dev and testing)
-
-  Create a conda environment with all required deps:
-
-  ```bash
-  ./conda_install.sh
-  ```
-
-  This script performs edittable installs (i.e. `pip -e`) of piper_control and
-  piper_ros so they can be developed together.
-
-### 🔧 Gotchas
-
-#### Creating Conda-Compatible ROS2 Nodes
-
-When using a Conda environment, ROS2 nodes may fail to discover packages
-installed in your active environment (https://github.com/ros2/ros2/issues/1469)
-
-The solution that worked for us was to install colcon into the active conda env:
-
-  ```bash
-  pip install colcon-common-extensions
-  ```

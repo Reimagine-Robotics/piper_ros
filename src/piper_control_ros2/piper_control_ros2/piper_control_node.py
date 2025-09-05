@@ -20,8 +20,9 @@ from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
-from piper_control_node import get_metadata
+from piper_control_ros2 import get_metadata
 
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
 @dataclasses.dataclass
 class JointCommand:
@@ -257,7 +258,7 @@ class PiperControlNode(Node):
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
 
       # pylint: disable=import-outside-toplevel
-      from piper_control_node.teach_mode import teach_mode
+      from piper_control_ros2.teach_mode import teach_mode
 
       # pylint: enable=import-outside-toplevel
 
@@ -274,7 +275,7 @@ class PiperControlNode(Node):
 
       # Get the path to the share directory of your package
       package_share_directory = get_package_share_directory(
-          "piper_control_node"
+          "piper_control_ros2"
       )
 
       # Construct the full path to your XML file
@@ -373,6 +374,8 @@ class PiperControlNode(Node):
     joint_velocities = self._robot.get_joint_velocities()
     joint_efforts = self._robot.get_joint_efforts()
     msg = sensor_msgs.JointState()
+    msg.name = JOINT_NAMES
+    msg.header.stamp = self.get_clock().now().to_msg()
     msg.position = list(joint_positions)
     msg.velocity = list(joint_velocities)
     msg.effort = list(joint_efforts)
@@ -394,6 +397,7 @@ class PiperControlNode(Node):
     msg = sensor_msgs.JointState()
     msg.position = [position]
     msg.effort = [effort]
+    msg.header.stamp = self.get_clock().now().to_msg()
 
     self.gripper_state_pub.publish(msg)
     self.get_logger().debug(

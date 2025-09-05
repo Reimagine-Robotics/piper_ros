@@ -15,3 +15,6 @@ __pycache__/
 # Entries below this point are managed by Please (DO NOT EDIT)
 plz-out
 .plzconfig.local
+# pixi environments
+.pixi/*
+!.pixi/config.toml
