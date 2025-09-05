@@ -138,6 +138,11 @@ class PiperControlNode(Node):
     arm_orientation = piper_control.ArmOrientations.from_string(
         self.arm_orientation
     )
+    self._robot.set_installation_pos(
+        piper_interface.ArmInstallationPos.from_string(
+            self.arm_orientation
+        )
+    )
     rest_position = arm_orientation.rest_position
 
     self._arm_controller = piper_control.MitJointPositionController(
