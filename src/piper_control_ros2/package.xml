@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>piper_control_node</name>
+  <name>piper_control_ros2</name>
   <version>0.0.0</version>
   <description>A ROS2 node for controlling AgileX Piper robots using
   piper_control</description>

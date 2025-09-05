@@ -17,11 +17,9 @@ class PuppeteeringNode(Node):
     self.declare_parameter("puppeteer_ns", "robot0")
 
     # Get the actual parameter values
-    self.puppet_ns = (
-        self.get_parameter("puppet_ns").get_parameter_value().string_value
-    )
+    self.puppet_ns = self.get_parameter("puppet_ns").get_parameter_value().string_value
     self.puppeteer_ns = (
-        self.get_parameter("puppeteer_ns").get_parameter_value().string_value
+      self.get_parameter("puppeteer_ns").get_parameter_value().string_value
     )
 
     self.get_logger().info(f"Puppet namespace: {self.puppet_ns}")
@@ -29,28 +27,32 @@ class PuppeteeringNode(Node):
 
     # Subscribe to puppeteer robot joint states
     self.puppeteer_joint_sub = self.create_subscription(
-        JointState,
-        f"{self.puppeteer_ns}/joint_states",
-        self.joint_callback,
-        10,
+      JointState,
+      f"{self.puppeteer_ns}/joint_states",
+      self.joint_callback,
+      10,
     )
 
     # Subscribe to puppeteer robot gripper state
     self.puppeteer_gripper_sub = self.create_subscription(
-        JointState,
-        f"{self.puppeteer_ns}/gripper_state",
-        self.gripper_callback,
-        10,
+      JointState,
+      f"{self.puppeteer_ns}/gripper_state",
+      self.gripper_callback,
+      10,
     )
 
     # Publish joint commands to the puppet robot
     self.puppet_joint_pub = self.create_publisher(
-        JointState, f"{self.puppet_ns}/joint_positions_cmd", 10
+      JointState,
+      f"{self.puppet_ns}/joint_positions_cmd",
+      10,
     )
 
     # Publish gripper commands to the puppet robot
     self.puppet_gripper_pub = self.create_publisher(
-        JointState, f"{self.puppet_ns}/gripper_cmd", 10
+      JointState,
+      f"{self.puppet_ns}/gripper_cmd",
+      10,
     )
 
   def joint_callback(self, msg: JointState) -> None:

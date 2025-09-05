@@ -1,6 +1,4 @@
-"""
-Piper control node for the Piper robot.
-"""
+"""Piper control node for the Piper robot."""
 
 from __future__ import annotations
 
@@ -20,7 +18,9 @@ from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
-from piper_control_node import get_metadata
+from piper_control_ros2 import get_metadata
+
+JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
 
 @dataclasses.dataclass
@@ -43,9 +43,9 @@ class JointCommand:
 
   @classmethod
   def from_msg(
-      cls,
-      msg: std_msgs.Float64MultiArray,
-      logger: logging.RcutilsLogger | None = None,
+    cls,
+    msg: std_msgs.Float64MultiArray,
+    logger: logging.RcutilsLogger | None = None,
   ) -> JointCommand:
     """Create a JointCommand from a Float64MultiArray message.
 
@@ -76,11 +76,10 @@ class JointCommand:
         joint_command.kp_gains = tuple(msg.data[offset : offset + dim.size])
       elif dim.label == "kd_gains":
         joint_command.kd_gains = tuple(msg.data[offset : offset + dim.size])
-      else:
-        if logger:
-          logger.warning(
-              f"Unknown dimension label '{dim.label}' in message: {msg}"
-          )
+      elif logger:
+        logger.warning(
+          f"Unknown dimension label '{dim.label}' in message: {msg}",
+        )
 
       offset += dim.size
 
@@ -88,9 +87,7 @@ class JointCommand:
 
 
 class PiperControlNode(Node):
-  """
-  ROS2 node for controlling the Piper robot.
-  """
+  """ROS2 node for controlling the Piper robot."""
 
   def __init__(self, gravity_model_path: str | None = None):
     """PiperControlNode constructor.
@@ -101,17 +98,14 @@ class PiperControlNode(Node):
         MUJOCO and Scipy installed as these are required for the custom gravity
         compensation using in the custom teach-mode.
     """
-
     super().__init__("piper_control_node")
 
     self.declare_parameter("can_port", "can0")
-    self.can_port = (
-        self.get_parameter("can_port").get_parameter_value().string_value
-    )
+    self.can_port = self.get_parameter("can_port").get_parameter_value().string_value
 
     self.declare_parameter("arm_orientation", "upright")
     self.arm_orientation = (
-        self.get_parameter("arm_orientation").get_parameter_value().string_value
+      self.get_parameter("arm_orientation").get_parameter_value().string_value
     )
 
     # Create a CAN connection to robot.
@@ -122,121 +116,118 @@ class PiperControlNode(Node):
 
     if not ports:
       readme = (
-          "https://github.com/Reimagine-Robotics/piper_control/blob/main/"
-          "README.md"
+        "https://github.com/Reimagine-Robotics/piper_control/blob/main/" "README.md"
       )
       raise ValueError(
-          "No ports found. Make sure the Piper is connected and turned on. "
-          "If you are having issues connecting to the piper, check our "
-          "troubleshooting guide @ "
-          f"{readme}"
+        "No ports found. Make sure the Piper is connected and turned on. "
+        "If you are having issues connecting to the piper, check our "
+        "troubleshooting guide @ "
+        f"{readme}",
       )
 
     self._robot = piper_interface.PiperInterface(can_port=self.can_port)
 
     # Get the appropriate rest position based on arm orientation
     arm_orientation = piper_control.ArmOrientations.from_string(
-        self.arm_orientation
+      self.arm_orientation,
     )
     rest_position = arm_orientation.rest_position
 
     self._arm_controller = piper_control.MitJointPositionController(
-        self._robot,
-        kp_gains=[5.0, 5.0, 5.0, 5.6, 7.0, 6.0],
-        kd_gains=0.8,
-        rest_position=rest_position,
+      self._robot,
+      kp_gains=[5.0, 5.0, 5.0, 5.6, 7.0, 6.0],
+      kd_gains=0.8,
+      rest_position=rest_position,
     )
 
     self._gripper_controller = piper_control.GripperController(self._robot)
 
     self.namespace = (
-        self.declare_parameter("namespace", "piper")
-        .get_parameter_value()
-        .string_value
+      self.declare_parameter("namespace", "piper").get_parameter_value().string_value
     )
 
     # Joint control
     self.joint_state_pub = self.create_publisher(
-        sensor_msgs.JointState,
-        f"{self.namespace}/joint_states",
-        qos_profile=10,
+      sensor_msgs.JointState,
+      f"{self.namespace}/joint_states",
+      qos_profile=10,
     )
     self.joint_command_sub = self.create_subscription(
-        std_msgs.Float64MultiArray,
-        f"{self.namespace}/joint_commands",
-        self.joint_cmd_callback,
-        qos_profile=10,
+      std_msgs.Float64MultiArray,
+      f"{self.namespace}/joint_commands",
+      self.joint_cmd_callback,
+      qos_profile=10,
     )
 
     # Gripper control
     self.gripper_state_pub = self.create_publisher(
-        sensor_msgs.JointState,
-        f"{self.namespace}/gripper_state",
-        qos_profile=10,
+      sensor_msgs.JointState,
+      f"{self.namespace}/gripper_state",
+      qos_profile=10,
     )
     self.gripper_command_sub = self.create_subscription(
-        sensor_msgs.JointState,
-        f"{self.namespace}/gripper_command",
-        self.gripper_cmd_callback,
-        qos_profile=10,
+      sensor_msgs.JointState,
+      f"{self.namespace}/gripper_command",
+      self.gripper_cmd_callback,
+      qos_profile=10,
     )
 
     # Service servers
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/reset",
-        self.handle_reset,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/reset",
+      self.handle_reset,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/enable",
-        self.handle_enable,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/enable",
+      self.handle_enable,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/disable",
-        self.handle_disable,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/disable",
+      self.handle_disable,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/enable_arm",
-        self.handle_enable_arm,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/enable_arm",
+      self.handle_enable_arm,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/disable_arm",
-        self.handle_disable_arm,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/disable_arm",
+      self.handle_disable_arm,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/enable_gripper",
-        self.handle_enable_gripper,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/enable_gripper",
+      self.handle_enable_gripper,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/disable_gripper",
-        self.handle_disable_gripper,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/disable_gripper",
+      self.handle_disable_gripper,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/get_status",
-        self.handle_get_status,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/get_status",
+      self.handle_get_status,  # type: ignore
     )
     self.create_service(
-        std_srvs.Trigger,
-        f"{self.namespace}/is_enabled",
-        self.handle_is_enabled,  # type: ignore
+      std_srvs.Trigger,
+      f"{self.namespace}/is_enabled",
+      self.handle_is_enabled,  # type: ignore
     )
 
     # Publish metadata about the node.
     self.node_metadata_pub = self.create_publisher(
-        std_msgs.String,
-        f"{self.namespace}/node_metadata",
-        qos_profile=10,
+      std_msgs.String,
+      f"{self.namespace}/node_metadata",
+      qos_profile=10,
     )
 
     self.get_logger().info(
-        f"Piper control node started with CAN ID: {self.can_port}"
+      f"Piper control node started with CAN ID: {self.can_port}",
     )
 
     # Timer to periodically publish joint states
@@ -252,41 +243,43 @@ class PiperControlNode(Node):
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
 
       # pylint: disable=import-outside-toplevel
-      from piper_control_node.teach_mode import teach_mode
+      from piper_control_ros2.teach_mode import teach_mode
 
       # pylint: enable=import-outside-toplevel
 
       self.create_service(
-          std_srvs.Trigger,
-          f"{self.namespace}/teach_mode_enable",
-          self.handle_teach_mode_enable,  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/teach_mode_enable",
+        self.handle_teach_mode_enable,  # type: ignore
       )
       self.create_service(
-          std_srvs.Trigger,
-          f"{self.namespace}/teach_mode_disable",
-          self.handle_teach_mode_disable,  # type: ignore
+        std_srvs.Trigger,
+        f"{self.namespace}/teach_mode_disable",
+        self.handle_teach_mode_disable,  # type: ignore
       )
 
       # Get the path to the share directory of your package
-      package_share_directory = get_package_share_directory(
-          "piper_control_node"
-      )
+      package_share_directory = get_package_share_directory("piper_control_ros2")
 
       # Construct the full path to your XML file
       piper_model_file_path = os.path.join(
-          package_share_directory, "data", "piper_grav_comp.xml"
+        package_share_directory,
+        "data",
+        "piper_grav_comp.xml",
       )
 
       self._teach_controller = teach_mode.TeachController(
-          self._robot,
-          self._arm_controller,
-          piper_model_file_path,
-          gravity_model_path,
-          self.arm_orientation,
+        self._robot,
+        self._arm_controller,
+        piper_model_file_path,
+        gravity_model_path,
+        self.arm_orientation,
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
-          0.005, self.teach_mode, autostart=False
+        0.005,
+        self.teach_mode,
+        autostart=False,
       )
     else:
       print("Teach Mode unavailable, no gravity model path provided")
@@ -320,7 +313,7 @@ class PiperControlNode(Node):
     if positions:
       if velocities or efforts:
         self.get_logger().warn(
-            "Received joint positions, but also velocities or efforts"
+          "Received joint positions, but also velocities or efforts",
         )
 
       self.get_logger().debug(f"Received joint positions: {positions}")
@@ -328,7 +321,7 @@ class PiperControlNode(Node):
         kp_gains = list(joint_command.kp_gains)
         if len(kp_gains) != len(positions):
           self.get_logger().warn(
-              "Received joint positions with mismatched kp gains"
+            "Received joint positions with mismatched kp gains",
           )
           kp_gains = None
       else:
@@ -337,15 +330,15 @@ class PiperControlNode(Node):
         kd_gains = list(joint_command.kd_gains)
         if len(kd_gains) != len(positions):
           self.get_logger().warn(
-              "Received joint positions with mismatched kd gains"
+            "Received joint positions with mismatched kd gains",
           )
           kd_gains = None
       else:
         kd_gains = None
       self._arm_controller.command_joints(
-          positions,
-          kp_gains=kp_gains,
-          kd_gains=kd_gains,
+        positions,
+        kp_gains=kp_gains,
+        kd_gains=kd_gains,
       )
 
     elif velocities:
@@ -354,7 +347,7 @@ class PiperControlNode(Node):
     elif efforts:
       if positions or velocities:
         self.get_logger().warn(
-            "Received joint efforts, but also positions or velocities"
+          "Received joint efforts, but also positions or velocities",
         )
 
       self.get_logger().debug(f"Received joint efforts: {efforts}")
@@ -368,6 +361,8 @@ class PiperControlNode(Node):
     joint_velocities = self._robot.get_joint_velocities()
     joint_efforts = self._robot.get_joint_efforts()
     msg = sensor_msgs.JointState()
+    msg.name = JOINT_NAMES
+    msg.header.stamp = self.get_clock().now().to_msg()
     msg.position = list(joint_positions)
     msg.velocity = list(joint_velocities)
     msg.effort = list(joint_efforts)
@@ -380,7 +375,7 @@ class PiperControlNode(Node):
     self._gripper_controller.command_position(position, effort)
 
     self.get_logger().debug(
-        f"Gripper command received: Position={position}, Effort={effort}"
+      f"Gripper command received: Position={position}, Effort={effort}",
     )
 
   def publish_gripper_state(self):
@@ -389,16 +384,17 @@ class PiperControlNode(Node):
     msg = sensor_msgs.JointState()
     msg.position = [position]
     msg.effort = [effort]
+    msg.header.stamp = self.get_clock().now().to_msg()
 
     self.gripper_state_pub.publish(msg)
     self.get_logger().debug(
-        f"Published gripper state: Position={position}, Effort={effort}"
+      f"Published gripper state: Position={position}, Effort={effort}",
     )
 
   def handle_reset(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -407,9 +403,9 @@ class PiperControlNode(Node):
       self._gripper_controller.stop()
 
       piper_init.reset_arm(
-          self._robot,
-          arm_controller=piper_interface.ArmController.MIT,
-          move_mode=piper_interface.MoveMode.MIT,
+        self._robot,
+        arm_controller=piper_interface.ArmController.MIT,
+        move_mode=piper_interface.MoveMode.MIT,
       )
       piper_init.reset_gripper(self._robot)
 
@@ -427,16 +423,16 @@ class PiperControlNode(Node):
     return response
 
   def handle_enable(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
     piper_init.enable_arm(
-        self._robot,
-        arm_controller=piper_interface.ArmController.MIT,
-        move_mode=piper_interface.MoveMode.MIT,
+      self._robot,
+      arm_controller=piper_interface.ArmController.MIT,
+      move_mode=piper_interface.MoveMode.MIT,
     )
     piper_init.enable_gripper(self._robot)
 
@@ -448,16 +444,16 @@ class PiperControlNode(Node):
     return response
 
   def handle_enable_arm(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
     piper_init.enable_arm(
-        self._robot,
-        arm_controller=piper_interface.ArmController.MIT,
-        move_mode=piper_interface.MoveMode.MIT,
+      self._robot,
+      arm_controller=piper_interface.ArmController.MIT,
+      move_mode=piper_interface.MoveMode.MIT,
     )
 
     self._arm_controller.start()
@@ -467,9 +463,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_enable_gripper(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -482,9 +478,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_disable(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -499,9 +495,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_disable_arm(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -514,9 +510,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_disable_gripper(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -529,9 +525,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_get_status(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
     status = self._robot.get_arm_status()
@@ -540,9 +536,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_is_enabled(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
     is_enabled = self._robot.is_enabled()
@@ -551,9 +547,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_teach_mode_enable(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -565,9 +561,9 @@ class PiperControlNode(Node):
     return response
 
   def handle_teach_mode_disable(
-      self,
-      request: std_srvs.Trigger.Request,
-      response: std_srvs.Trigger.Response,
+    self,
+    request: std_srvs.Trigger.Request,
+    response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
 
@@ -605,12 +601,13 @@ def term_handler(signum, frame, node: PiperControlNode) -> None:
 def main(args=None):
   # Parse the gravity model argument for teach mode.
   parser = argparse.ArgumentParser(
-      prog="PiperControlNode", description="ROS2 node for Piper control."
+    prog="PiperControlNode",
+    description="ROS2 node for Piper control.",
   )
   parser.add_argument(
-      "-gp",
-      "--gravity_path",
-      help="Path to the gravity data gatherd by teach_mode/run_gather_data.py",
+    "-gp",
+    "--gravity_path",
+    help="Path to the gravity data gatherd by teach_mode/run_gather_data.py",
   )
   cargs, _ = parser.parse_known_args()
 
