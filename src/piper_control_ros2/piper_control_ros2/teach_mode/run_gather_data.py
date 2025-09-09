@@ -212,11 +212,11 @@ def get_gravity_compensation_gains(
   """Get PD gains for gravity compensation based on arm orientation."""
   if orientation == "upright":
     # Original gains for upright/vertical orientation
-    p_gains = np.array([3.0, 15.0, 12.0, 3.0, 3.0, 2.0])
+    p_gains = np.array([3.0, 15.0, 12.0, 5.0, 5.0, 4.0])
     d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
   elif orientation in ["left", "right"]:
     # Gains for left/right mounted arms (may need tuning)
-    p_gains = np.array([15.0, 15.0, 12.0, 3.0, 3.0, 2.0])
+    p_gains = np.array([15.0, 15.0, 12.0, 5.0, 5.0, 4.0])
     d_gains = np.array([3.0, 3.0, 3.0, 2.0, 2.0, 2.0])
   else:
     raise ValueError(f"Unknown arm orientation: {orientation}")
