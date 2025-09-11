@@ -1,5 +1,4 @@
-"""
-Grav Comp model data gathering script.
+"""Grav Comp model data gathering script.
 
 This script moves the arm to various joint configurations, and at each pose
 it applies a torque (using a PD-controller) to find a stable configuration
@@ -38,7 +37,7 @@ Gather data for left/right arm:
 import dataclasses
 import json
 import time
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 from absl import app, flags
@@ -133,7 +132,8 @@ class GravityTorqueSampler:
 
       kp_gains = [p_gains[i]] * 6
       self._controller.command_joints(
-          list(self._target_joint_angles), kp_gains=kp_gains
+          list(self._target_joint_angles),
+          kp_gains=kp_gains,
       )
       time.sleep(0.005)
 
@@ -289,7 +289,7 @@ def save_json(
     # Load existing data if file exists
     existing_data = []
     try:
-      with open(filename, "r", encoding="utf-8") as f:
+      with open(filename, encoding="utf-8") as f:
         existing_data = json.load(f)
     except FileNotFoundError:
       pass  # Will create new file
@@ -310,7 +310,7 @@ def save_json(
 def load_poses_from_json(filename: str) -> list[np.ndarray]:
   """Load poses from JSON file."""
   try:
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
       poses_list = json.load(f)
     poses = [np.array(pose) for pose in poses_list]
     print(f"Loaded {len(poses)} poses from: {filename}")
@@ -326,7 +326,7 @@ def load_existing_target_poses_from_data_file(
 ) -> list[np.ndarray]:
   """Load target poses from existing data samples file."""
   try:
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
       data = json.load(f)
 
     # Extract unique target poses from data samples
@@ -345,7 +345,7 @@ def load_existing_target_poses_from_data_file(
 
     print(
         f"Found {len(target_poses)} unique target poses in existing data file: "
-        f"{filename}"
+        f"{filename}",
     )
     return target_poses
   except FileNotFoundError:
@@ -408,7 +408,6 @@ def generate_samples(
     orientation: str = "upright",
 ) -> Sequence[GravityTorqueSample]:
   """Generate gravity compensation samples using provided poses."""
-
   if sample_poses is None:
     sample_poses = get_default_poses()
 
@@ -434,7 +433,9 @@ def generate_samples(
 
 
 def export(
-    samples: Sequence[GravityTorqueSample], filename: str, append: bool = False
+    samples: Sequence[GravityTorqueSample],
+    filename: str,
+    append: bool = False,
 ) -> None:
   serialised_samples = []
   for s in samples:
@@ -444,7 +445,7 @@ def export(
             "joint_idx": s.joint_idx,
             "grav_comp_torque": s.torque,
             "target_joint_angles": list(s.target_joint_angles),
-        }
+        },
     )
 
   save_json(serialised_samples, filename, append)
@@ -461,7 +462,7 @@ def main(_):
         "No ports found. Make sure the Piper is connected and turned on. "
         "If you are having issues connecting to the piper, check our "
         "troubleshooting guide @ "
-        "https://github.com/Reimagine-Robotics/piper_control/blob/main/README.md"
+        "https://github.com/Reimagine-Robotics/piper_control/blob/main/README.md",
     )
   print(f"Active ports: {ports}")
 
@@ -507,7 +508,6 @@ def main(_):
         kd_gains=0.0,
         rest_position=None,
     ) as controller:
-
       # Send rest pose once to set gains.
       controller.move_to_position(list(rest_position), timeout=0.01)
 
@@ -520,7 +520,7 @@ def main(_):
         print("\nTo use these poses for data collection, run:")
         print(
             f"python {__file__} --mode=collect_data "
-            f"--poses_path={_POSES_PATH.value}"
+            f"--poses_path={_POSES_PATH.value}",
         )
       else:
         print("No poses collected.")
@@ -534,7 +534,7 @@ def main(_):
     # If appending to an existing dataset, skip poses that are already collected
     if _APPEND.value:
       existing_target_poses = load_existing_target_poses_from_data_file(
-          _OUT_PATH.value
+          _OUT_PATH.value,
       )
       # Filter out poses that already exist as targets in the data
       new_poses = []
@@ -554,7 +554,7 @@ def main(_):
       if skipped > 0:
         print(
             f"Skipping {skipped} poses already collected; {len(new_poses)} "
-            "new poses to collect."
+            "new poses to collect.",
         )
       sample_poses = new_poses
 
@@ -565,12 +565,14 @@ def main(_):
         kd_gains=0.8,
         rest_position=list(rest_position),
     ) as controller:
-
       if not sample_poses:
         print("No new poses to collect. Nothing to do.")
       else:
         all_samples = generate_samples(
-            robot, controller, sample_poses, _ARM_ORIENTATION.value
+            robot,
+            controller,
+            sample_poses,
+            _ARM_ORIENTATION.value,
         )
         export(all_samples, _OUT_PATH.value, append=_APPEND.value)
         print(all_samples)

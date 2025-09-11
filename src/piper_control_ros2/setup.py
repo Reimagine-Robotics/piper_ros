@@ -1,6 +1,6 @@
-# Setup script for the piper_control_ros2 package.
-#
-# Note: We install an executable wrapper script manually to work around ROS2’s
+"""Setup script for the piper_control_ros2 package."""
+
+# Note: We install an executable wrapper script manually to work around ROS2`s
 # default behavior of hardcoding `#!/usr/bin/python3` as the shebang in
 # generated launch entrypoints. This causes Python packages installed only in
 # Conda to be invisible at runtime.
@@ -13,6 +13,7 @@
 # correctly using the Conda environment for dependencies.
 
 import os
+
 from setuptools import find_packages, setup
 
 package_name = "piper_control_ros2"
