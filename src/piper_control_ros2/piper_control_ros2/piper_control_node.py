@@ -442,12 +442,18 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
-    piper_init.enable_arm(
-        self._robot,
-        arm_controller=piper_interface.ArmController.MIT,
-        move_mode=piper_interface.MoveMode.MIT,
-    )
-    piper_init.enable_gripper(self._robot)
+    try:
+        piper_init.enable_arm(
+            self._robot,
+            arm_controller=piper_interface.ArmController.MIT,
+            move_mode=piper_interface.MoveMode.MIT,
+        )
+        piper_init.enable_gripper(self._robot)
+    except TimeoutError as e:
+        self.get_logger().warn(f"Enable robot failed: {e}")
+        response.success = False
+        response.message = "Robot not enabled, gripper failed to enable."
+        return response
 
     self._arm_controller.start()
     self._gripper_controller.start()
@@ -463,11 +469,17 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
-    piper_init.enable_arm(
-        self._robot,
-        arm_controller=piper_interface.ArmController.MIT,
-        move_mode=piper_interface.MoveMode.MIT,
-    )
+    try:
+        piper_init.enable_arm(
+            self._robot,
+            arm_controller=piper_interface.ArmController.MIT,
+            move_mode=piper_interface.MoveMode.MIT,
+        )
+    except TimeoutError as e:
+        self.get_logger().warn(f"Enable arm failed: {e}")
+        response.success = False
+        response.message = "Arm not enabled."
+        return response
 
     self._arm_controller.start()
 
@@ -482,7 +494,13 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
-    piper_init.enable_gripper(self._robot)
+    try:
+        piper_init.enable_gripper(self._robot)
+    except TimeoutError as e:
+        self.get_logger().warn(f"Enable gripper failed: {e}")
+        response.success = False
+        response.message = "Gripper not enabled."
+        return response
 
     self._gripper_controller.start()
 
@@ -500,8 +518,14 @@ class PiperControlNode(Node):
     self._arm_controller.stop()
     self._gripper_controller.stop()
 
-    piper_init.disable_arm(self._robot)
-    piper_init.disable_gripper(self._robot)
+    try:
+        piper_init.disable_arm(self._robot)
+        piper_init.disable_gripper(self._robot)
+    except TimeoutError as e:
+        self.get_logger().warn(f"Disable robot failed: {e}")
+        response.success = False
+        response.message = "Robot not disabled, arm or gripper failed to disable."
+        return response
 
     response.success = True
     response.message = "Robot disabled."
@@ -516,7 +540,13 @@ class PiperControlNode(Node):
 
     self._arm_controller.stop()
 
-    piper_init.disable_arm(self._robot)
+    try:
+        piper_init.disable_arm(self._robot)
+    except TimeoutError as e:
+        self.get_logger().warn(f"Disable arm failed: {e}")
+        response.success = False
+        response.message = "Arm not disabled."
+        return response
 
     response.success = True
     response.message = "Arm disabled."
@@ -531,7 +561,13 @@ class PiperControlNode(Node):
 
     self._gripper_controller.stop()
 
-    piper_init.disable_gripper(self._robot)
+    try: 
+        piper_init.disable_gripper(self._robot)
+    except TimeoutError as e:
+        self.get_logger().warn(f"Disable gripper failed: {e}")
+        response.success = False
+        response.message = "Gripper not disabled."
+        return response
 
     response.success = True
     response.message = "Gripper disabled."
