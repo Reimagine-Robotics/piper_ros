@@ -1,5 +1,7 @@
 # piper_ros
 
+[![CI/CD](https://github.com/Reimagine-Robotics/piper_ros/actions/workflows/ci.yaml/badge.svg)](https://github.com/Reimagine-Robotics/piper_ros/actions/workflows/ci.yaml)
+
 ROS2 driver for AgileX Piper arms using the [R2
 piper_control](https://github.com/Reimagine-Robotics/piper_control) interface
 
