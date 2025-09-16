@@ -1,0 +1,22 @@
+target-version = "py312"
+indent-width = 2
+
+[lint]
+extend-select = [
+  "W",
+  # isort
+  "I",
+  # pep8-naming
+  "N",
+  # pyupgrade
+  "UP",
+  # pandas-vet
+  "PD",
+  # NumPy-specific rules
+  "NPY",
+  # Ruff-specific rules
+  "RUF",
+]
+
+[lint.pydocstyle]
+convention = "google"

@@ -1,6 +1,4 @@
-"""
-Piper control node for the Piper robot.
-"""
+"""Piper control node for the Piper robot."""
 
 from __future__ import annotations
 
@@ -23,6 +21,7 @@ from std_srvs import srv as std_srvs
 from piper_control_ros2 import get_metadata
 
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+
 
 @dataclasses.dataclass
 class JointCommand:
@@ -77,11 +76,10 @@ class JointCommand:
         joint_command.kp_gains = tuple(msg.data[offset : offset + dim.size])
       elif dim.label == "kd_gains":
         joint_command.kd_gains = tuple(msg.data[offset : offset + dim.size])
-      else:
-        if logger:
-          logger.warning(
-              f"Unknown dimension label '{dim.label}' in message: {msg}"
-          )
+      elif logger:
+        logger.warning(
+            f"Unknown dimension label '{dim.label}' in message: {msg}",
+        )
 
       offset += dim.size
 
@@ -89,9 +87,7 @@ class JointCommand:
 
 
 class PiperControlNode(Node):
-  """
-  ROS2 node for controlling the Piper robot.
-  """
+  """ROS2 node for controlling the Piper robot."""
 
   def __init__(self, gravity_model_path: str | None = None):
     """PiperControlNode constructor.
@@ -102,7 +98,6 @@ class PiperControlNode(Node):
         MUJOCO and Scipy installed as these are required for the custom gravity
         compensation using in the custom teach-mode.
     """
-
     super().__init__("piper_control_node")
 
     self.declare_parameter("can_port", "can0")
@@ -130,19 +125,17 @@ class PiperControlNode(Node):
           "No ports found. Make sure the Piper is connected and turned on. "
           "If you are having issues connecting to the piper, check our "
           "troubleshooting guide @ "
-          f"{readme}"
+          f"{readme}",
       )
 
     self._robot = piper_interface.PiperInterface(can_port=self.can_port)
 
     # Get the appropriate rest position based on arm orientation
     arm_orientation = piper_control.ArmOrientations.from_string(
-        self.arm_orientation
+        self.arm_orientation,
     )
     self._robot.set_installation_pos(
-        piper_interface.ArmInstallationPos.from_string(
-            self.arm_orientation
-        )
+        piper_interface.ArmInstallationPos.from_string(self.arm_orientation)
     )
     rest_position = arm_orientation.rest_position
 
@@ -242,7 +235,7 @@ class PiperControlNode(Node):
     )
 
     self.get_logger().info(
-        f"Piper control node started with CAN ID: {self.can_port}"
+        f"Piper control node started with CAN ID: {self.can_port}",
     )
 
     # Timer to periodically publish joint states
@@ -280,7 +273,9 @@ class PiperControlNode(Node):
 
       # Construct the full path to your XML file
       piper_model_file_path = os.path.join(
-          package_share_directory, "data", "piper_grav_comp.xml"
+          package_share_directory,
+          "data",
+          "piper_grav_comp.xml",
       )
 
       self._teach_controller = teach_mode.TeachController(
@@ -292,7 +287,9 @@ class PiperControlNode(Node):
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
-          0.005, self.teach_mode, autostart=False
+          0.005,
+          self.teach_mode,
+          autostart=False,
       )
     else:
       print("Teach Mode unavailable, no gravity model path provided")
@@ -326,7 +323,7 @@ class PiperControlNode(Node):
     if positions:
       if velocities or efforts:
         self.get_logger().warn(
-            "Received joint positions, but also velocities or efforts"
+            "Received joint positions, but also velocities or efforts",
         )
 
       self.get_logger().debug(f"Received joint positions: {positions}")
@@ -334,7 +331,7 @@ class PiperControlNode(Node):
         kp_gains = list(joint_command.kp_gains)
         if len(kp_gains) != len(positions):
           self.get_logger().warn(
-              "Received joint positions with mismatched kp gains"
+              "Received joint positions with mismatched kp gains",
           )
           kp_gains = None
       else:
@@ -343,7 +340,7 @@ class PiperControlNode(Node):
         kd_gains = list(joint_command.kd_gains)
         if len(kd_gains) != len(positions):
           self.get_logger().warn(
-              "Received joint positions with mismatched kd gains"
+              "Received joint positions with mismatched kd gains",
           )
           kd_gains = None
       else:
@@ -360,7 +357,7 @@ class PiperControlNode(Node):
     elif efforts:
       if positions or velocities:
         self.get_logger().warn(
-            "Received joint efforts, but also positions or velocities"
+            "Received joint efforts, but also positions or velocities",
         )
 
       self.get_logger().debug(f"Received joint efforts: {efforts}")
@@ -388,7 +385,7 @@ class PiperControlNode(Node):
     self._gripper_controller.command_position(position, effort)
 
     self.get_logger().debug(
-        f"Gripper command received: Position={position}, Effort={effort}"
+        f"Gripper command received: Position={position}, Effort={effort}",
     )
 
   def publish_gripper_state(self):
@@ -401,7 +398,7 @@ class PiperControlNode(Node):
 
     self.gripper_state_pub.publish(msg)
     self.get_logger().debug(
-        f"Published gripper state: Position={position}, Effort={effort}"
+        f"Published gripper state: Position={position}, Effort={effort}",
     )
 
   def handle_reset(
@@ -614,7 +611,8 @@ def term_handler(signum, frame, node: PiperControlNode) -> None:
 def main(args=None):
   # Parse the gravity model argument for teach mode.
   parser = argparse.ArgumentParser(
-      prog="PiperControlNode", description="ROS2 node for Piper control."
+      prog="PiperControlNode",
+      description="ROS2 node for Piper control.",
   )
   parser.add_argument(
       "-gp",
