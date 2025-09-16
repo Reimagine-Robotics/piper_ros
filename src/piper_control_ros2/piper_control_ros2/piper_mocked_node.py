@@ -19,7 +19,7 @@ from piper_control_ros2.piper_control_node import JOINT_NAMES, JointCommand
 
 
 def always_succeed_response(msg: str) -> None:
-  def callback(  # pylint: disable=unused-variable
+  def callback(
       request: std_srvs.Trigger.Request, response: std_srvs.Trigger.Response
   ):
     del request  # unused
@@ -27,7 +27,7 @@ def always_succeed_response(msg: str) -> None:
     response.success = True
     return response
 
-  return callable
+  return callback
 
 
 class PiperMockedNode(Node):
