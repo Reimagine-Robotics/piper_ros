@@ -180,9 +180,9 @@ class PiperMockedNode(Node):
 
   def publish_joint_states(self):
     msg = sensor_msgs.JointState()
-    gripper_msg = sensor_msgs.JointState()
     msg.name = JOINT_NAMES
     msg.header.stamp = self.get_clock().now().to_msg()
+    gripper_msg = sensor_msgs.JointState()
     gripper_msg.header.stamp = self.get_clock().now().to_msg()
     with self._joint_positions_lock:
       msg.position = self._current_joint_positions
@@ -190,8 +190,8 @@ class PiperMockedNode(Node):
       msg.effort = self._current_joint_efforts
       gripper_msg.position = [self._gripper_position]
       gripper_msg.effort = [self._gripper_effort]
-    self.gripper_state_pub.publish(msg)
     self.joint_state_pub.publish(msg)
+    self.gripper_state_pub.publish(gripper_msg)
 
   def gripper_cmd_callback(self, msg: sensor_msgs.JointState) -> None:
     position = msg.position[0] if msg.position else 0.0
