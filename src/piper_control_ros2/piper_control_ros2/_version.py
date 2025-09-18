@@ -3,4 +3,4 @@
 Update this file manually when there is a change to the piper_control_ros2.
 """
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"

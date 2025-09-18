@@ -6,7 +6,7 @@ package_name = "piper_puppeteering_node"
 
 setup(
     name=package_name,
-    version="0.0.0",
+    version="1.1.0",
     packages=find_packages(exclude=["test"]),
     data_files=[
         (
