@@ -1,6 +1,6 @@
 [project]
 name = "piper_ros"
-version = "1.0.1"
+version = "1.1.0"
 description = "A ROS2 interface to AgileX Piper arms."
 readme = "README.md"
 requires-python = ">=3.10"
