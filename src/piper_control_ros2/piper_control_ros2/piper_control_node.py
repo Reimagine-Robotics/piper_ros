@@ -188,6 +188,11 @@ class PiperControlNode(Node):
     )
     self.create_service(
         std_srvs.Trigger,
+        f"{self.namespace}/hard_reset",
+        self.handle_hard_reset,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
         f"{self.namespace}/enable",
         self.handle_enable,  # type: ignore
     )
@@ -430,6 +435,19 @@ class PiperControlNode(Node):
       response.message = "Robot not reset."
       response.success = False
 
+    return response
+
+  def handle_hard_reset(
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
+    del request
+
+    self._robot.hard_reset()
+
+    response.success = True
+    response.message = "Robot resumed from emergency stop."
     return response
 
   def handle_enable(
