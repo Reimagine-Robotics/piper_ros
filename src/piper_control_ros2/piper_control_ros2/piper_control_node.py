@@ -383,7 +383,8 @@ class PiperControlNode(Node):
     for i, (joint_name, val) in enumerate(zip(JOINT_NAMES, joint_positions)):
       min_val = min_limits[i]
       max_val = max_limits[i]
-      if val < min_val or val > max_val:
+      epsilon = 0.1
+      if val < min_val - epsilon or val > max_val + epsilon:
         out_of_bounds_warnings.append(
             f"  Joint {joint_name} out of bounds: {min_val} <= {val} <= {max_val}"
         )
