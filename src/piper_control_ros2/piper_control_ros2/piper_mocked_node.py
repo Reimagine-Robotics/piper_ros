@@ -8,6 +8,7 @@ import json
 import socket
 import threading
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
@@ -170,6 +171,22 @@ class PiperMockedNode(Node):
     positions = list(joint_command.positions)
     velocities = list(joint_command.velocities)
     efforts = list(joint_command.efforts)
+    # Check if nan
+    if np.any(np.isnan(positions)):
+      positions = None
+      self.get_logger().warn(
+          "Received NaN in joint positions; ignoring positions update."
+      )
+    if np.any(np.isnan(velocities)):
+      velocities = None
+      self.get_logger().warn(
+          "Received NaN in joint velocities; ignoring velocities update."
+      )
+    if np.any(np.isnan(efforts)):
+      efforts = None
+      self.get_logger().warn(
+          "Received NaN in joint efforts; ignoring efforts update."
+      )
     with self._joint_positions_lock:
       if positions:
         self._current_joint_positions = positions
