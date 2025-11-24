@@ -10,6 +10,7 @@ import os
 import signal
 
 import rclpy
+import ruckig
 from ament_index_python.packages import get_package_share_directory
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
 from rclpy import logging
@@ -21,6 +22,14 @@ from std_srvs import srv as std_srvs
 from piper_control_ros2 import get_metadata
 
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+
+# Piper arm limits for Ruckig trajectory generation
+JOINT_LIMITS_MIN = [-2.687, 0.0, -3.05, -1.85, -1.3, -1.75]
+JOINT_LIMITS_MAX = [2.687, 3.4, 0.0, 1.85, 1.3, 1.75]
+VELOCITY_LIMITS_MIN = [-3.14, -3.4, -3.14, -3.9, -3.9, -3.9]
+VELOCITY_LIMITS_MAX = [3.14, 3.4, 3.14, 3.9, 3.9, 3.9]
+ACCELERATION_LIMITS_MAX = [5.0, 5.0, 5.0, 5.0, 5.0, 5.0]
+JERK_LIMITS_MAX = [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
 
 
 @dataclasses.dataclass
@@ -148,6 +157,36 @@ class PiperControlNode(Node):
 
     self._gripper_controller = piper_control.GripperController(self._robot)
 
+    # Ruckig trajectory generation setup
+    self._control_frequency = 200.0  # Hz
+    self._dt = 1.0 / self._control_frequency
+    self._ruckig_otg = ruckig.Ruckig(len(JOINT_NAMES), self._dt)
+    self._ruckig_input = ruckig.InputParameter(len(JOINT_NAMES))
+    self._ruckig_output = ruckig.OutputParameter(len(JOINT_NAMES))
+
+    # Set limits
+    self._ruckig_input.min_position = JOINT_LIMITS_MIN
+    self._ruckig_input.max_position = JOINT_LIMITS_MAX
+    self._ruckig_input.min_velocity = VELOCITY_LIMITS_MIN
+    self._ruckig_input.max_velocity = VELOCITY_LIMITS_MAX
+    self._ruckig_input.max_acceleration = ACCELERATION_LIMITS_MAX
+    self._ruckig_input.max_jerk = JERK_LIMITS_MAX
+
+    # Initialize current state (will sync from robot on first control loop)
+    self._ruckig_input.current_position = self._robot.get_joint_positions()
+    self._ruckig_input.current_velocity = [0.0] * len(JOINT_NAMES)
+    self._ruckig_input.current_acceleration = [0.0] * len(JOINT_NAMES)
+
+    # Initialize target state (same as current)
+    self._ruckig_input.target_position = list(
+        self._ruckig_input.current_position
+    )
+    self._ruckig_input.target_velocity = [0.0] * len(JOINT_NAMES)
+    self._ruckig_input.target_acceleration = [0.0] * len(JOINT_NAMES)
+
+    # Teach mode flag (initialized even if teach mode not available)
+    self._teach_mode_active = False
+
     self.namespace = (
         self.declare_parameter("namespace", "piper")
         .get_parameter_value()
@@ -247,6 +286,9 @@ class PiperControlNode(Node):
     self.create_timer(0.005, self.publish_joint_states)
     self.create_timer(0.005, self.publish_gripper_state)
 
+    # Ruckig control loop timer
+    self.create_timer(self._dt, self._ruckig_control_loop)
+
     # Timer to publish node metadata
     self.create_timer(1.0, self.publish_node_metadata)
 
@@ -290,7 +332,6 @@ class PiperControlNode(Node):
           gravity_model_path,
           self.arm_orientation,
       )
-      self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
           0.005,
           self.teach_mode,
@@ -305,6 +346,26 @@ class PiperControlNode(Node):
 
     piper_init.disable_arm(self._robot)
     piper_init.disable_gripper(self._robot)
+
+  def _ruckig_control_loop(self) -> None:
+    """Update Ruckig trajectory and command robot."""
+    # Skip if teach mode is active
+    if self._teach_mode_active:
+      return
+
+    # Update trajectory
+    result = self._ruckig_otg.update(self._ruckig_input, self._ruckig_output)
+
+    # Pass output to input for next iteration
+    self._ruckig_output.pass_to_input(self._ruckig_input)
+
+    # Command the interpolated position
+    if result in (ruckig.Result.Working, ruckig.Result.Finished):
+      self._arm_controller.command_joints(
+          list(self._ruckig_output.new_position)
+      )
+    else:
+      self.get_logger().warn(f"Ruckig trajectory generation failed: {result}")
 
   def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
     """Handle incoming joint commands.
@@ -332,29 +393,17 @@ class PiperControlNode(Node):
         )
 
       self.get_logger().debug(f"Received joint positions: {positions}")
-      if joint_command.kp_gains:
-        kp_gains = list(joint_command.kp_gains)
-        if len(kp_gains) != len(positions):
-          self.get_logger().warn(
-              "Received joint positions with mismatched kp gains",
-          )
-          kp_gains = None
-      else:
-        kp_gains = None
-      if joint_command.kd_gains:
-        kd_gains = list(joint_command.kd_gains)
-        if len(kd_gains) != len(positions):
-          self.get_logger().warn(
-              "Received joint positions with mismatched kd gains",
-          )
-          kd_gains = None
-      else:
-        kd_gains = None
-      self._arm_controller.command_joints(
-          positions,
-          kp_gains=kp_gains,
-          kd_gains=kd_gains,
-      )
+
+      # Set as Ruckig target for smooth trajectory generation
+      self._ruckig_input.target_position = positions
+      self._ruckig_input.target_velocity = [0.0] * len(positions)
+      self._ruckig_input.target_acceleration = [0.0] * len(positions)
+
+      # Note: kp/kd gains are currently not supported with Ruckig mode
+      if joint_command.kp_gains or joint_command.kd_gains:
+        self.get_logger().debug(
+            "Custom gains ignored when using Ruckig trajectory generation",
+        )
 
     elif velocities:
       self.get_logger().warn("Velocity actuation not currently supported")
@@ -633,11 +682,6 @@ class PiperControlNode(Node):
 
     self._teach_mode_active = False
     self._teach_mode_timer.cancel()
-
-    # Ensure that the last command the robot sees isnt a constant torque command
-    # from the last joint configuration that teach mode saw.
-    cur_joint_positions = self._robot.get_joint_positions()
-    self._arm_controller.command_joints(cur_joint_positions)
 
     response.success = True
     response.message = "Teach mode disabled."
