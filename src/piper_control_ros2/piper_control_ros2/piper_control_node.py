@@ -23,6 +23,12 @@ from piper_control_ros2 import get_metadata
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
 
+# Control parameters
+CONTROL_HZ = 200
+DEFAULT_KP_GAINS = (10.0, 10.0, 10.0, 11.2, 40.0, 12.0)
+DEFAULT_KD_GAINS = (0.8, 0.8, 0.8, 0.8, 0.8, 0.8)
+
+
 @dataclasses.dataclass
 class JointCommand:
   """Data class for joint commands.
@@ -89,15 +95,8 @@ class JointCommand:
 class PiperControlNode(Node):
   """ROS2 node for controlling the Piper robot."""
 
-  def __init__(self, gravity_model_path: str | None = None):
-    """PiperControlNode constructor.
-
-    Args:
-      gravity_model_path: The path to the gravity model json file. By providing
-        this, you will also enable teach mode. NOTE: You will need to have
-        MUJOCO and Scipy installed as these are required for the custom gravity
-        compensation using in the custom teach-mode.
-    """
+  def __init__(self):
+    """PiperControlNode constructor."""
     super().__init__("piper_control_node")
 
     self.declare_parameter("can_port", "can0")
@@ -109,6 +108,13 @@ class PiperControlNode(Node):
     self.arm_orientation = (
         self.get_parameter("arm_orientation").get_parameter_value().string_value
     )
+
+    # Gravity model options.
+    # NOTE: For this to be used, your piper_control dependency must have the
+    # gravity options enabled during installation.
+    # This gravity model is used for the teach mode controller AND is used to
+    # provide feed-forward torque terms during normal operation.
+    self.declare_parameter("gravity_model_path", "")
 
     # Create a CAN connection to robot.
     ports = piper_connect.find_ports()
@@ -141,8 +147,8 @@ class PiperControlNode(Node):
 
     self._arm_controller = piper_control.MitJointPositionController(
         self._robot,
-        kp_gains=[5.0, 5.0, 5.0, 5.6, 7.0, 6.0],
-        kd_gains=0.8,
+        kp_gains=DEFAULT_KP_GAINS,
+        kd_gains=DEFAULT_KD_GAINS,
         rest_position=rest_position,
     )
 
@@ -244,21 +250,32 @@ class PiperControlNode(Node):
     )
 
     # Timer to periodically publish joint states
-    self.create_timer(0.005, self.publish_joint_states)
-    self.create_timer(0.005, self.publish_gripper_state)
+    self.create_timer(1.0 / CONTROL_HZ, self.publish_joint_states)
+    self.create_timer(1.0 / CONTROL_HZ, self.publish_gripper_state)
 
     # Timer to publish node metadata
     self.create_timer(1.0, self.publish_node_metadata)
 
     # Put teach mode behind a flag as it requires additional libraries be
     # installed (MUJOCO and Scipy).
-    if gravity_model_path:
+    self._gravity_model_exists = gravity_samples_path and gravity_model_path
+    if self._gravity_model_exists:
+      try:
+        from piper_control import gravity_compensation
+      except ImportError as e:
+        raise ImportError(
+            "Please install piper_control with gravity support.",
+        ) from e
+
+      gravity_model = gravity_compensation.GravityCompensationModel(
+          samples_path=gravity_samples_path,
+          model_path=gravity_model_path,
+          # Hardcode to cubic. Can expose to the user later if needed, but
+          # CUBIC is sufficient for most use cases.
+          model_type=gravity_compensation.ModelType.CUBIC,
+      )
+
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
-
-      # pylint: disable=import-outside-toplevel
-      from piper_control_ros2.teach_mode import teach_mode
-
-      # pylint: enable=import-outside-toplevel
 
       self.create_service(
           std_srvs.Trigger,
@@ -292,7 +309,7 @@ class PiperControlNode(Node):
       )
       self._teach_mode_active = False
       self._teach_mode_timer = self.create_timer(
-          0.005,
+          1.0 / CONTROL_HZ,
           self.teach_mode,
           autostart=False,
       )
