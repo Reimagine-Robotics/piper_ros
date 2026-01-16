@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import argparse
 import dataclasses
 import functools
 import json
-import os
 import signal
 
 import rclpy
-from ament_index_python.packages import get_package_share_directory
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
 from rclpy import logging
 from rclpy.node import Node
@@ -19,6 +16,7 @@ from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
 from piper_control_ros2 import get_metadata
+from piper_control_ros2.teach_mode import teach_mode
 
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
@@ -115,6 +113,17 @@ class PiperControlNode(Node):
     # This gravity model is used for the teach mode controller AND is used to
     # provide feed-forward torque terms during normal operation.
     self.declare_parameter("gravity_model_path", "")
+    gravity_model_path = (
+        self.get_parameter("gravity_model_path")
+        .get_parameter_value()
+        .string_value
+    )
+    self.declare_parameter("gravity_samples_path", "")
+    gravity_samples_path = (
+        self.get_parameter("gravity_samples_path")
+        .get_parameter_value()
+        .string_value
+    )
 
     # Create a CAN connection to robot.
     ports = piper_connect.find_ports()
@@ -259,15 +268,30 @@ class PiperControlNode(Node):
     # Put teach mode behind a flag as it requires additional libraries be
     # installed (MUJOCO and Scipy).
     self._gravity_model_exists = gravity_samples_path and gravity_model_path
+
+    self.create_service(
+        std_srvs.Trigger,
+        f"{self.namespace}/teach_mode_enable",
+        self.handle_teach_mode_enable,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
+        f"{self.namespace}/teach_mode_disable",
+        self.handle_teach_mode_disable,  # type: ignore
+    )
+
     if self._gravity_model_exists:
       try:
+        # pylint: disable=import-outside-toplevel
         from piper_control import gravity_compensation
+
+        # pylint: enable=import-outside-toplevel
       except ImportError as e:
         raise ImportError(
             "Please install piper_control with gravity support.",
         ) from e
 
-      gravity_model = gravity_compensation.GravityCompensationModel(
+      self._gravity_model = gravity_compensation.GravityCompensationModel(
           samples_path=gravity_samples_path,
           model_path=gravity_model_path,
           # Hardcode to cubic. Can expose to the user later if needed, but
@@ -277,44 +301,28 @@ class PiperControlNode(Node):
 
       print(f"Teach Mode available, using gravity model: {gravity_model_path}")
 
-      self.create_service(
-          std_srvs.Trigger,
-          f"{self.namespace}/teach_mode_enable",
-          self.handle_teach_mode_enable,  # type: ignore
-      )
-      self.create_service(
-          std_srvs.Trigger,
-          f"{self.namespace}/teach_mode_disable",
-          self.handle_teach_mode_disable,  # type: ignore
-      )
-
-      # Get the path to the share directory of your package
-      package_share_directory = get_package_share_directory(
-          "piper_control_ros2"
-      )
-
-      # Construct the full path to your XML file
-      piper_model_file_path = os.path.join(
-          package_share_directory,
-          "data",
-          "piper_grav_comp.xml",
-      )
-
       self._teach_controller = teach_mode.TeachController(
           self._robot,
           self._arm_controller,
-          piper_model_file_path,
-          gravity_model_path,
-          self.arm_orientation,
-      )
-      self._teach_mode_active = False
-      self._teach_mode_timer = self.create_timer(
-          1.0 / CONTROL_HZ,
-          self.teach_mode,
-          autostart=False,
+          self._gravity_model,
       )
     else:
-      print("Teach Mode unavailable, no gravity model path provided")
+      print(
+          "Teach Mode available, with no gravity model. Arm will not hold "
+          "itself up."
+      )
+      self._gravity_model = None
+      self._teach_controller = teach_mode.TeachController(
+          self._robot,
+          self._arm_controller,
+          None,
+      )
+    self._teach_mode_active = False
+    self._teach_mode_timer = self.create_timer(
+        1.0 / CONTROL_HZ,
+        self.teach_mode,
+        autostart=False,
+    )
 
   def clean_stop(self) -> None:
     self._arm_controller.stop()
@@ -367,10 +375,17 @@ class PiperControlNode(Node):
           kd_gains = None
       else:
         kd_gains = None
+
+      if self._gravity_model:
+        # If we have a gravity model, use it to compute feed-forward torques.
+        torque = self._gravity_model.predict(positions).tolist()
+      else:
+        torque = None
       self._arm_controller.command_joints(
           positions,
           kp_gains=kp_gains,
           kd_gains=kd_gains,
+          torques_ff=torque,
       )
 
     elif velocities:
@@ -680,23 +695,11 @@ def term_handler(signum, frame, node: PiperControlNode) -> None:
 
 
 def main(args=None):
-  # Parse the gravity model argument for teach mode.
-  parser = argparse.ArgumentParser(
-      prog="PiperControlNode",
-      description="ROS2 node for Piper control.",
-  )
-  parser.add_argument(
-      "-gp",
-      "--gravity_path",
-      help="Path to the gravity data gatherd by teach_mode/run_gather_data.py",
-  )
-  cargs, _ = parser.parse_known_args()
-
   rclpy.init(args=args)
 
   # Create the PiperControlNode. If a gravity model path is provided via a
   # command line argument, this will also enable teach mode for the ROS node.
-  node = PiperControlNode(gravity_model_path=cargs.gravity_path)
+  node = PiperControlNode()
 
   # Register signal handlers to prevent banging the arm on a Ctrl-C.
   signal.signal(signal.SIGINT, functools.partial(term_handler, node=node))
