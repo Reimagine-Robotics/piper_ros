@@ -39,7 +39,6 @@ class TeachController:
       # basically.
       stability_torque = -qvel * 1.0  # Damping factor
       applied_torque = hover_torque + stability_torque
-      print(f"Applied teach mode torque: {applied_torque}")
 
       self._controller.command_torques(applied_torque)
     else:
