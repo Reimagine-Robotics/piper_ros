@@ -297,6 +297,7 @@ class PiperControlNode(Node):
           autostart=False,
       )
     else:
+      self._teach_controller = None
       print("Teach Mode unavailable, no gravity model path provided")
 
   def clean_stop(self) -> None:
@@ -350,10 +351,18 @@ class PiperControlNode(Node):
           kd_gains = None
       else:
         kd_gains = None
+
+      torques_ff = None
+      if self._teach_controller is not None:
+        torques_ff = self._teach_controller.gravity_model(
+            self._robot.get_joint_positions()
+        )
+
       self._arm_controller.command_joints(
           positions,
           kp_gains=kp_gains,
           kd_gains=kd_gains,
+          torques_ff=torques_ff,
       )
 
     elif velocities:
@@ -637,14 +646,19 @@ class PiperControlNode(Node):
     # Ensure that the last command the robot sees isnt a constant torque command
     # from the last joint configuration that teach mode saw.
     cur_joint_positions = self._robot.get_joint_positions()
-    self._arm_controller.command_joints(cur_joint_positions)
+    torques_ff = None
+    if self._teach_controller is not None:
+      torques_ff = self._teach_controller.gravity_model(cur_joint_positions)
+    self._arm_controller.command_joints(
+        cur_joint_positions, torques_ff=torques_ff
+    )
 
     response.success = True
     response.message = "Teach mode disabled."
     return response
 
   def teach_mode(self) -> None:
-    assert self._teach_mode_active
+    assert self._teach_mode_active and self._teach_controller is not None
     self._teach_controller.step()
 
   def publish_node_metadata(self) -> None:

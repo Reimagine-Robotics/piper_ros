@@ -335,6 +335,9 @@ class TeachController:
         arm_orientation,
     )
 
+  def gravity_model(self, cur_joints: Sequence[float]) -> Sequence[float]:
+    return self._gravity_model.predict(cur_joints)
+
   def step(self) -> None:
     cur_joints = self._robot.get_joint_positions()
     cur_vel = np.array(self._robot.get_joint_velocities())
