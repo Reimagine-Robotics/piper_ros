@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import json
+import os
 import signal
 
 import rclpy
@@ -112,9 +113,9 @@ class PiperControlNode(Node):
     # gravity options enabled during installation.
     # This gravity model is used for the teach mode controller AND is used to
     # provide feed-forward torque terms during normal operation.
-    self.declare_parameter("gravity_model_path", "")
-    gravity_model_path = (
-        self.get_parameter("gravity_model_path")
+    self.declare_parameter("gravity_model_mujoco_path", "")
+    gravity_model_mujoco_path = (
+        self.get_parameter("gravity_model_mujoco_path")
         .get_parameter_value()
         .string_value
     )
@@ -265,10 +266,6 @@ class PiperControlNode(Node):
     # Timer to publish node metadata
     self.create_timer(1.0, self.publish_node_metadata)
 
-    # Put teach mode behind a flag as it requires additional libraries be
-    # installed (MUJOCO and Scipy).
-    self._gravity_model_exists = gravity_samples_path and gravity_model_path
-
     self.create_service(
         std_srvs.Trigger,
         f"{self.namespace}/teach_mode_enable",
@@ -278,6 +275,25 @@ class PiperControlNode(Node):
         std_srvs.Trigger,
         f"{self.namespace}/teach_mode_disable",
         self.handle_teach_mode_disable,  # type: ignore
+    )
+
+    # Make sure the gravity paths are valid to enable grav comp.
+    if gravity_model_mujoco_path and not os.path.isfile(
+        gravity_model_mujoco_path
+    ):
+      self.get_logger().warn(
+          f"Gravity model MUJOCO path does not exist: "
+          f"{gravity_model_mujoco_path}. Gravity comp will be disabled.",
+      )
+      gravity_model_mujoco_path = ""  # Ignore invalid path.
+    if gravity_samples_path and not os.path.isfile(gravity_samples_path):
+      self.get_logger().warn(
+          f"Gravity samples path does not exist: "
+          f"{gravity_samples_path}. Gravity comp will be disabled.",
+      )
+      gravity_samples_path = ""  # Ignore invalid path.
+    self._gravity_model_exists = (
+        gravity_samples_path and gravity_model_mujoco_path
     )
 
     if self._gravity_model_exists:
@@ -293,13 +309,15 @@ class PiperControlNode(Node):
 
       self._gravity_model = gravity_compensation.GravityCompensationModel(
           samples_path=gravity_samples_path,
-          model_path=gravity_model_path,
+          model_path=gravity_model_mujoco_path,
           # Hardcode to cubic. Can expose to the user later if needed, but
           # CUBIC is sufficient for most use cases.
           model_type=gravity_compensation.ModelType.CUBIC,
       )
 
-      print(f"Teach Mode available, using gravity model: {gravity_model_path}")
+      print("Teach Mode available, using:")
+      print(f"\tthe mujoco model: {gravity_model_mujoco_path}")
+      print(f"\tand the gravity samples: {gravity_samples_path}\n")
 
       self._teach_controller = teach_mode.TeachController(
           self._robot,
@@ -319,7 +337,7 @@ class PiperControlNode(Node):
       )
     self._teach_mode_active = False
     self._teach_mode_timer = self.create_timer(
-        1.0 / CONTROL_HZ,
+        0.005,
         self.teach_mode,
         autostart=False,
     )
