@@ -24,7 +24,7 @@ JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
 # Control parameters
 CONTROL_HZ = 200
-DEFAULT_KP_GAINS = (5.5, 5.5, 15.0, 15.0, 25.0, 15.0)
+DEFAULT_KP_GAINS = (5.5, 5.5, 10.0, 15.0, 25.0, 15.0)
 DEFAULT_KD_GAINS = (0.8, 0.8, 0.8, 0.8, 0.8, 0.8)
 
 
