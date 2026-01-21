@@ -119,9 +119,17 @@ class PiperControlNode(Node):
         .get_parameter_value()
         .string_value
     )
+
     self.declare_parameter("gravity_samples_path", "")
     gravity_samples_path = (
         self.get_parameter("gravity_samples_path")
+        .get_parameter_value()
+        .string_value
+    )
+
+    self.declare_parameter("gravity_model_type", "direct")
+    gravity_model_type = (
+        self.get_parameter("gravity_model_type")
         .get_parameter_value()
         .string_value
     )
@@ -288,13 +296,10 @@ class PiperControlNode(Node):
       gravity_model_mujoco_path = ""  # Ignore invalid path.
     if gravity_samples_path and not os.path.isfile(gravity_samples_path):
       self.get_logger().warn(
-          f"Gravity samples path does not exist: "
-          f"{gravity_samples_path}. Gravity comp will be disabled.",
+          f"Gravity samples path does not exist: " f"{gravity_samples_path}.",
       )
       gravity_samples_path = ""  # Ignore invalid path.
-    self._gravity_model_exists = (
-        gravity_samples_path and gravity_model_mujoco_path
-    )
+    self._gravity_model_exists = bool(gravity_model_mujoco_path)
 
     if self._gravity_model_exists:
       try:
@@ -310,9 +315,7 @@ class PiperControlNode(Node):
       self._gravity_model = gravity_compensation.GravityCompensationModel(
           samples_path=gravity_samples_path,
           model_path=gravity_model_mujoco_path,
-          # Hardcode to cubic. Can expose to the user later if needed, but
-          # CUBIC is sufficient for most use cases.
-          model_type=gravity_compensation.ModelType.CUBIC,
+          model_type=gravity_compensation.ModelType(gravity_model_type),
       )
 
       print("Teach Mode available, using:")

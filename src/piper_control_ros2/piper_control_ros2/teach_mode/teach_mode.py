@@ -29,7 +29,6 @@ class TeachController:
 
   def step(self) -> None:
     """Perform a single control step of the teach controller."""
-
     qpos = self._robot.get_joint_positions()
     if self._gravity_model:
       qvel = np.array(self._robot.get_joint_velocities())
@@ -39,7 +38,6 @@ class TeachController:
       # basically.
       stability_torque = -qvel * 1.0  # Damping factor
       applied_torque = hover_torque + stability_torque
-
       self._controller.command_torques(applied_torque)
     else:
       self._controller.command_torques(np.zeros_like(qpos).tolist())
