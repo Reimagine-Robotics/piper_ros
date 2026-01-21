@@ -119,7 +119,7 @@ class PiperControlNode(Node):
         .get_parameter_value()
         .string_value
     )
-    print(f"{gravity_model_mujoco_path=}")
+
     self.declare_parameter("gravity_samples_path", "")
     gravity_samples_path = (
         self.get_parameter("gravity_samples_path")
