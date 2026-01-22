@@ -7,6 +7,7 @@ import functools
 import json
 import os
 import signal
+import time
 
 import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
@@ -687,10 +688,34 @@ class PiperControlNode(Node):
     self._teach_mode_active = False
     self._teach_mode_timer.cancel()
 
-    # Ensure that the last command the robot sees isnt a constant torque command
-    # from the last joint configuration that teach mode saw.
+    # Smoothly transition from teach mode (torque control) to position control
+    # by ramping up the gains gradually. This prevents the jerk that would occur
+    # from an abrupt switch to full gains.
     cur_joint_positions = self._robot.get_joint_positions()
-    self._arm_controller.command_joints(cur_joint_positions)
+
+    # Ramp up gains over ~100ms (20 steps at 200Hz = 0.1 seconds)
+    # Start with very low gains to mimic the torque control behavior,
+    # then gradually increase to the default gains.
+    ramp_steps = 20
+    min_kp = 0.5
+    min_kd = 0.1
+
+    for i in range(ramp_steps):
+      # Linear interpolation from min gains to default gains
+      alpha = (i + 1) / ramp_steps
+      kp_gains = [
+          min_kp + alpha * (default - min_kp) for default in DEFAULT_KP_GAINS
+      ]
+      kd_gains = [
+          min_kd + alpha * (default - min_kd) for default in DEFAULT_KD_GAINS
+      ]
+
+      self._arm_controller.command_joints(
+          cur_joint_positions,
+          kp_gains=kp_gains,
+          kd_gains=kd_gains,
+      )
+      time.sleep(1.0 / CONTROL_HZ)
 
     response.success = True
     response.message = "Teach mode disabled."
