@@ -6,6 +6,8 @@ environments:
     - url: https://prefix.dev/robostack-jazzy/
     indexes:
     - https://pypi.org/simple
+    options:
+      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -705,13 +707,13 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zziplib-0.13.69-he45264a_2.conda
-      - pypi: git+https://github.com/Reimagine-Robotics/piper_control/?tag=v1.1.3#d6ffca1d78f982d56c3c01716f051a57e5212c6b
       - pypi: https://files.pythonhosted.org/packages/8f/aa/ba0014cc4659328dc818a28827be78e6d97312ab0cb98105a770924dc11e/absl_py-2.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/98/87b5946356095738cb90a6df7b35ff69ac5750f6e783d5fbcc5cb3b6cbd7/etils-1.13.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2f/e0/014d5d9d7a4564cf1c40b5039bc882db69fd881111e03ab3657ac0b218e2/fsspec-2025.7.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7f/ba/de3630757c7d7fc2086aaf3994926d6b869d31586e4d0c14f1666af31b93/glfw-2.9.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.p39.p310.p311.p312.p313-none-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/6d/87/f5454b3e3844bb5c37037a4f3e5e6e70a37263f06d34c2a5b62e801a5b3f/mujoco-3.3.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/3f/945ef7ab14dc4f9d7f40288d2df998d1837ee0888ec3659c813487572faa/pip-25.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/e5/c2/b10388f3d54e8bb22c2ee7673bcf581699fab124113aff224615731cffa9/piper_control-1.3.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/33/1c/ba7ff89bc051bbb809be27038f1ba502efca717ce305c0a4e28accd78bf3/piper_sdk-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/92/44/8634af40b0db528b5b37e901c0dc67321354880d251bf8965901d57693a5/PyOpenGL-3.1.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/b3/2844ad99e2b8333613973cb25e3ae14b641fe55e96474907e57a08715769/python_can-4.6.0-py3-none-any.whl
@@ -721,6 +723,8 @@ environments:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
     - url: https://prefix.dev/robostack-jazzy/
+    options:
+      pypi-prerelease-mode: if-necessary-or-explicit
     packages:
       linux-64:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -4986,26 +4990,28 @@ packages:
   version: '25.2'
   sha256: 6d67a2b4e7f14d8b31b8b52648866fa717f45a1eb70e83002f4331d07e953717
   requires_python: '>=3.9'
-- pypi: git+https://github.com/Reimagine-Robotics/piper_control/?tag=v1.1.3#d6ffca1d78f982d56c3c01716f051a57e5212c6b
+- pypi: https://files.pythonhosted.org/packages/e5/c2/b10388f3d54e8bb22c2ee7673bcf581699fab124113aff224615731cffa9/piper_control-1.3.2-py3-none-any.whl
   name: piper-control
-  version: 1.1.3
+  version: 1.3.2
+  sha256: 17eefc6ecc85ddea957cdfcabfc9045b33d452d2da3292727a9770557e85326f
   requires_dist:
-  - numpy<2
+  - numpy
   - packaging
   - piper-sdk>=0.2.19
+  - mujoco ; extra == 'gravity'
+  - scipy ; extra == 'gravity'
   requires_python: '>=3.10'
 - pypi: ./
   name: piper-ros
-  version: 1.0.1
-  sha256: b5a2596b790f57e078522b0e62c802f28a7ccde5872d3449e5f6a44b6181c1e0
+  version: 1.2.0
+  sha256: bd5a80851175fddabb3929b1347443bbc52645ec466023fd4f84c16d2ebf6c9a
   requires_dist:
   - numpy
   - r2-transformations
-  - piper-control>=1.1.2
+  - piper-control>=1.3.1
   - piper-sdk>=0.2.19
   - pytest ; extra == 'test'
   requires_python: '>=3.10'
-  editable: true
 - pypi: https://files.pythonhosted.org/packages/33/1c/ba7ff89bc051bbb809be27038f1ba502efca717ce305c0a4e28accd78bf3/piper_sdk-0.4.1-py3-none-any.whl
   name: piper-sdk
   version: 0.4.1

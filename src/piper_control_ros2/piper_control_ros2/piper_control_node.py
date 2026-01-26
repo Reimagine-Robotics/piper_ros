@@ -114,21 +114,21 @@ class PiperControlNode(Node):
     # This gravity model is used for the teach mode controller AND is used to
     # provide feed-forward torque terms during normal operation.
     self.declare_parameter("gravity_model_mujoco_path", "")
-    gravity_model_mujoco_path = (
+    self.gravity_model_mujoco_path = (
         self.get_parameter("gravity_model_mujoco_path")
         .get_parameter_value()
         .string_value
     )
 
     self.declare_parameter("gravity_samples_path", "")
-    gravity_samples_path = (
+    self.gravity_samples_path = (
         self.get_parameter("gravity_samples_path")
         .get_parameter_value()
         .string_value
     )
 
     self.declare_parameter("gravity_model_type", "direct")
-    gravity_model_type = (
+    self.gravity_model_type = (
         self.get_parameter("gravity_model_type")
         .get_parameter_value()
         .string_value
@@ -285,64 +285,50 @@ class PiperControlNode(Node):
         self.handle_teach_mode_disable,  # type: ignore
     )
 
-    # Make sure the gravity paths are valid to enable grav comp.
-    if gravity_model_mujoco_path and not os.path.isfile(
-        gravity_model_mujoco_path
-    ):
-      self.get_logger().warn(
-          f"Gravity model MUJOCO path does not exist: "
-          f"{gravity_model_mujoco_path}. Gravity comp will be disabled.",
-      )
-      gravity_model_mujoco_path = ""  # Ignore invalid path.
-    if gravity_samples_path and not os.path.isfile(gravity_samples_path):
-      self.get_logger().warn(
-          f"Gravity samples path does not exist: " f"{gravity_samples_path}.",
-      )
-      gravity_samples_path = ""  # Ignore invalid path.
-    self._gravity_model_exists = bool(gravity_model_mujoco_path)
+    self._gravity_model = self._create_gravity_model()
 
-    if self._gravity_model_exists:
-      try:
-        # pylint: disable=import-outside-toplevel
-        from piper_control import gravity_compensation
-
-        # pylint: enable=import-outside-toplevel
-      except ImportError as e:
-        raise ImportError(
-            "Please install piper_control with gravity support.",
-        ) from e
-
-      self._gravity_model = gravity_compensation.GravityCompensationModel(
-          samples_path=gravity_samples_path,
-          model_path=gravity_model_mujoco_path,
-          model_type=gravity_compensation.ModelType(gravity_model_type),
-      )
-
-      print("Teach Mode available, using:")
-      print(f"\tthe mujoco model: {gravity_model_mujoco_path}")
-      print(f"\tand the gravity samples: {gravity_samples_path}\n")
-
-      self._teach_controller = teach_mode.TeachController(
-          self._robot,
-          self._arm_controller,
-          self._gravity_model,
-      )
-    else:
-      print(
-          "Teach Mode available, with no gravity model. Arm will not hold "
-          "itself up."
-      )
-      self._gravity_model = None
-      self._teach_controller = teach_mode.TeachController(
-          self._robot,
-          self._arm_controller,
-          None,
-      )
+    self._teach_controller = teach_mode.TeachController(
+        self._robot,
+        self._arm_controller,
+        self._gravity_model,
+    )
     self._teach_mode_active = False
     self._teach_mode_timer = self.create_timer(
         0.005,
         self.teach_mode,
         autostart=False,
+    )
+
+  def _create_gravity_model(self):
+    """Create and return gravity compensation model, or None if unavailable."""
+    if not self.gravity_model_mujoco_path:
+      self.get_logger().info("No gravity model path provided.")
+      return None
+    if not os.path.isfile(self.gravity_model_mujoco_path):
+      self.get_logger().warn(
+          f"Mujoco path not found: {self.gravity_model_mujoco_path}"
+      )
+      return None
+
+    try:
+      # pylint: disable-next=import-outside-toplevel
+      from piper_control import gravity_compensation
+    except ImportError as e:
+      raise ImportError(
+          "Please install piper_control with gravity support.",
+      ) from e
+
+    self.get_logger().info("Gravity compensation:")
+    self.get_logger().info(f"  model_type: {self.gravity_model_type}")
+    self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
+    self.get_logger().info(
+        f"  samples_path: {self.gravity_samples_path or None}"
+    )
+    self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
+    return gravity_compensation.GravityCompensationModel(
+        samples_path=self.gravity_samples_path,
+        model_path=self.gravity_model_mujoco_path,
+        model_type=gravity_compensation.ModelType(self.gravity_model_type),
     )
 
   def clean_stop(self) -> None:
@@ -703,6 +689,12 @@ class PiperControlNode(Node):
   def publish_node_metadata(self) -> None:
     """Publish metadata about the node."""
     metadata = get_metadata.get_metadata(self._robot)
+    metadata["gravity_model_type"] = self.gravity_model_type
+    metadata["gravity_model_mujoco_path"] = (
+        self.gravity_model_mujoco_path or None
+    )
+    metadata["gravity_samples_path"] = self.gravity_samples_path or None
+    metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
 
