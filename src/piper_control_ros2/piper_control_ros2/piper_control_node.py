@@ -318,9 +318,11 @@ class PiperControlNode(Node):
           "Please install piper_control with gravity support.",
       ) from e
 
-    self.get_logger().info(
-        f"Gravity compensation: {self.gravity_model_type} mode"
-    )
+    self.get_logger().info("Gravity compensation:")
+    self.get_logger().info(f"  model_type: {self.gravity_model_type}")
+    self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
+    self.get_logger().info(f"  samples_path: {self.gravity_samples_path or None}")
+    self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
     return gravity_compensation.GravityCompensationModel(
         samples_path=self.gravity_samples_path,
         model_path=self.gravity_model_mujoco_path,
