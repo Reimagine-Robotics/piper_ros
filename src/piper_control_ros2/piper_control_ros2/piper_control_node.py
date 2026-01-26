@@ -285,52 +285,8 @@ class PiperControlNode(Node):
         self.handle_teach_mode_disable,  # type: ignore
     )
 
-    # Validate paths if provided.
-    if self.gravity_model_mujoco_path and not os.path.isfile(
-        self.gravity_model_mujoco_path
-    ):
-      self.get_logger().warn(
-          f"Gravity model MUJOCO path does not exist: "
-          f"{self.gravity_model_mujoco_path}. Gravity comp will be disabled.",
-      )
-      self.gravity_model_mujoco_path = ""
-    if self.gravity_samples_path and not os.path.isfile(
-        self.gravity_samples_path
-    ):
-      self.get_logger().warn(
-          f"Gravity samples path does not exist: {self.gravity_samples_path}.",
-      )
-      self.gravity_samples_path = ""
-
     # Initialize gravity model. Direct mode doesn't require a mujoco path.
-    self._gravity_model = None
-    if self.gravity_model_type == "direct" or self.gravity_model_mujoco_path:
-      try:
-        # pylint: disable-next=import-outside-toplevel
-        from piper_control import gravity_compensation
-      except ImportError as e:
-        raise ImportError(
-            "Please install piper_control with gravity support.",
-        ) from e
-
-      self._gravity_model = gravity_compensation.GravityCompensationModel(
-          samples_path=self.gravity_samples_path,
-          model_path=self.gravity_model_mujoco_path,
-          model_type=gravity_compensation.ModelType(self.gravity_model_type),
-      )
-      self.get_logger().info("Gravity compensation enabled:")
-      self.get_logger().info(f"  model_type: {self.gravity_model_type}")
-      self.get_logger().info(
-          f"  mujoco_path: {self.gravity_model_mujoco_path or None}"
-      )
-      self.get_logger().info(
-          f"  samples_path: {self.gravity_samples_path or None}"
-      )
-      self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
-    else:
-      self.get_logger().warn(
-          "Gravity compensation disabled - arm won't hold itself up"
-      )
+    self._gravity_model = self._create_gravity_model()
 
     self._teach_controller = teach_mode.TeachController(
         self._robot,
@@ -342,6 +298,33 @@ class PiperControlNode(Node):
         0.005,
         self.teach_mode,
         autostart=False,
+    )
+
+  def _create_gravity_model(self):
+    """Create and return gravity compensation model, or None if unavailable."""
+    if not self.gravity_model_mujoco_path:
+      return None
+    if not os.path.isfile(self.gravity_model_mujoco_path):
+      self.get_logger().warn(
+          f"Mujoco path not found: {self.gravity_model_mujoco_path}"
+      )
+      return None
+
+    try:
+      # pylint: disable-next=import-outside-toplevel
+      from piper_control import gravity_compensation
+    except ImportError as e:
+      raise ImportError(
+          "Please install piper_control with gravity support.",
+      ) from e
+
+    self.get_logger().info(
+        f"Gravity compensation: {self.gravity_model_type} mode"
+    )
+    return gravity_compensation.GravityCompensationModel(
+        samples_path=self.gravity_samples_path,
+        model_path=self.gravity_model_mujoco_path,
+        model_type=gravity_compensation.ModelType(self.gravity_model_type),
     )
 
   def clean_stop(self) -> None:
