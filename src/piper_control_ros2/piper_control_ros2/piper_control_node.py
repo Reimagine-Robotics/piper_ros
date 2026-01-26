@@ -114,21 +114,21 @@ class PiperControlNode(Node):
     # This gravity model is used for the teach mode controller AND is used to
     # provide feed-forward torque terms during normal operation.
     self.declare_parameter("gravity_model_mujoco_path", "")
-    gravity_model_mujoco_path = (
+    self.gravity_model_mujoco_path = (
         self.get_parameter("gravity_model_mujoco_path")
         .get_parameter_value()
         .string_value
     )
 
     self.declare_parameter("gravity_samples_path", "")
-    gravity_samples_path = (
+    self.gravity_samples_path = (
         self.get_parameter("gravity_samples_path")
         .get_parameter_value()
         .string_value
     )
 
     self.declare_parameter("gravity_model_type", "direct")
-    gravity_model_type = (
+    self.gravity_model_type = (
         self.get_parameter("gravity_model_type")
         .get_parameter_value()
         .string_value
@@ -286,23 +286,25 @@ class PiperControlNode(Node):
     )
 
     # Validate paths if provided.
-    if gravity_model_mujoco_path and not os.path.isfile(
-        gravity_model_mujoco_path
+    if self.gravity_model_mujoco_path and not os.path.isfile(
+        self.gravity_model_mujoco_path
     ):
       self.get_logger().warn(
           f"Gravity model MUJOCO path does not exist: "
-          f"{gravity_model_mujoco_path}. Gravity comp will be disabled.",
+          f"{self.gravity_model_mujoco_path}. Gravity comp will be disabled.",
       )
-      gravity_model_mujoco_path = ""
-    if gravity_samples_path and not os.path.isfile(gravity_samples_path):
+      self.gravity_model_mujoco_path = ""
+    if self.gravity_samples_path and not os.path.isfile(
+        self.gravity_samples_path
+    ):
       self.get_logger().warn(
-          f"Gravity samples path does not exist: {gravity_samples_path}.",
+          f"Gravity samples path does not exist: {self.gravity_samples_path}.",
       )
-      gravity_samples_path = ""
+      self.gravity_samples_path = ""
 
     # Initialize gravity model. Direct mode doesn't require a mujoco path.
     self._gravity_model = None
-    if gravity_model_type == "direct" or gravity_model_mujoco_path:
+    if self.gravity_model_type == "direct" or self.gravity_model_mujoco_path:
       try:
         # pylint: disable-next=import-outside-toplevel
         from piper_control import gravity_compensation
@@ -312,12 +314,22 @@ class PiperControlNode(Node):
         ) from e
 
       self._gravity_model = gravity_compensation.GravityCompensationModel(
-          samples_path=gravity_samples_path,
-          model_path=gravity_model_mujoco_path,
-          model_type=gravity_compensation.ModelType(gravity_model_type),
+          samples_path=self.gravity_samples_path,
+          model_path=self.gravity_model_mujoco_path,
+          model_type=gravity_compensation.ModelType(self.gravity_model_type),
+      )
+      self.get_logger().info("Gravity compensation enabled:")
+      self.get_logger().info(f"  model_type: {self.gravity_model_type}")
+      self.get_logger().info(
+          f"  mujoco_path: {self.gravity_model_mujoco_path or None}"
       )
       self.get_logger().info(
-          f"Gravity compensation enabled ({gravity_model_type} mode)"
+          f"  samples_path: {self.gravity_samples_path or None}"
+      )
+      self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
+    else:
+      self.get_logger().warn(
+          "Gravity compensation disabled - arm won't hold itself up"
       )
 
     self._teach_controller = teach_mode.TeachController(
@@ -690,6 +702,12 @@ class PiperControlNode(Node):
   def publish_node_metadata(self) -> None:
     """Publish metadata about the node."""
     metadata = get_metadata.get_metadata(self._robot)
+    metadata["gravity_model_type"] = self.gravity_model_type
+    metadata["gravity_model_mujoco_path"] = (
+        self.gravity_model_mujoco_path or None
+    )
+    metadata["gravity_samples_path"] = self.gravity_samples_path or None
+    metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
 
