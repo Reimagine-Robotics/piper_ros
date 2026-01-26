@@ -285,7 +285,6 @@ class PiperControlNode(Node):
         self.handle_teach_mode_disable,  # type: ignore
     )
 
-    # Initialize gravity model. Direct mode doesn't require a mujoco path.
     self._gravity_model = self._create_gravity_model()
 
     self._teach_controller = teach_mode.TeachController(
@@ -303,6 +302,7 @@ class PiperControlNode(Node):
   def _create_gravity_model(self):
     """Create and return gravity compensation model, or None if unavailable."""
     if not self.gravity_model_mujoco_path:
+      self.get_logger().info("No gravity model path provided.")
       return None
     if not os.path.isfile(self.gravity_model_mujoco_path):
       self.get_logger().warn(
