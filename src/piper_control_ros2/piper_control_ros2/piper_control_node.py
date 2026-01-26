@@ -285,7 +285,7 @@ class PiperControlNode(Node):
         self.handle_teach_mode_disable,  # type: ignore
     )
 
-    # Make sure the gravity paths are valid to enable grav comp.
+    # Validate paths if provided.
     if gravity_model_mujoco_path and not os.path.isfile(
         gravity_model_mujoco_path
     ):
@@ -293,20 +293,19 @@ class PiperControlNode(Node):
           f"Gravity model MUJOCO path does not exist: "
           f"{gravity_model_mujoco_path}. Gravity comp will be disabled.",
       )
-      gravity_model_mujoco_path = ""  # Ignore invalid path.
+      gravity_model_mujoco_path = ""
     if gravity_samples_path and not os.path.isfile(gravity_samples_path):
       self.get_logger().warn(
-          f"Gravity samples path does not exist: " f"{gravity_samples_path}.",
+          f"Gravity samples path does not exist: {gravity_samples_path}.",
       )
-      gravity_samples_path = ""  # Ignore invalid path.
-    self._gravity_model_exists = bool(gravity_model_mujoco_path)
+      gravity_samples_path = ""
 
-    if self._gravity_model_exists:
+    # Initialize gravity model. Direct mode doesn't require a mujoco path.
+    self._gravity_model = None
+    if gravity_model_type == "direct" or gravity_model_mujoco_path:
       try:
-        # pylint: disable=import-outside-toplevel
+        # pylint: disable-next=import-outside-toplevel
         from piper_control import gravity_compensation
-
-        # pylint: enable=import-outside-toplevel
       except ImportError as e:
         raise ImportError(
             "Please install piper_control with gravity support.",
@@ -317,27 +316,15 @@ class PiperControlNode(Node):
           model_path=gravity_model_mujoco_path,
           model_type=gravity_compensation.ModelType(gravity_model_type),
       )
+      self.get_logger().info(
+          f"Gravity compensation enabled ({gravity_model_type} mode)"
+      )
 
-      print("Teach Mode available, using:")
-      print(f"\tthe mujoco model: {gravity_model_mujoco_path}")
-      print(f"\tand the gravity samples: {gravity_samples_path}\n")
-
-      self._teach_controller = teach_mode.TeachController(
-          self._robot,
-          self._arm_controller,
-          self._gravity_model,
-      )
-    else:
-      print(
-          "Teach Mode available, with no gravity model. Arm will not hold "
-          "itself up."
-      )
-      self._gravity_model = None
-      self._teach_controller = teach_mode.TeachController(
-          self._robot,
-          self._arm_controller,
-          None,
-      )
+    self._teach_controller = teach_mode.TeachController(
+        self._robot,
+        self._arm_controller,
+        self._gravity_model,
+    )
     self._teach_mode_active = False
     self._teach_mode_timer = self.create_timer(
         0.005,
