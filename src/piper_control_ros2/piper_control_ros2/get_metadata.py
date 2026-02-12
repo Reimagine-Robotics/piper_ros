@@ -10,6 +10,18 @@ from piper_control import piper_interface
 from ._version import __version__ as __piper_ros_version__
 
 
+def _resolve_git_hash() -> str:
+  try:
+    return (
+        subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    )
+  except Exception:  # pylint: disable=broad-except
+    return "unknown"
+
+
+_CACHED_GIT_HASH = _resolve_git_hash()
+
+
 def get_metadata(
     piper: piper_interface.PiperInterface,
 ) -> dict:
@@ -31,13 +43,7 @@ def get_piper_ros_version() -> str:
 
 def get_piper_ros_git_hash() -> str:
   """Get the git hash of the piper_ros package."""
-  try:
-    git_hash = (
-        subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
-    )
-    return git_hash
-  except Exception:  # pylint: disable=broad-except
-    return "unknown"
+  return _CACHED_GIT_HASH
 
 
 def get_piper_control_version() -> str:
