@@ -299,6 +299,11 @@ class PiperControlNode(Node):
         autostart=False,
     )
 
+    # Fixed-rate joint command sender. Decouples ROS message arrival timing
+    # from CAN command timing to prevent jerkiness under CPU load.
+    self._pending_joint_cmd = None
+    self.create_timer(1.0 / CONTROL_HZ, self._send_joint_command)
+
   def _create_gravity_model(self):
     """Create and return gravity compensation model, or None if unavailable."""
     if not self.gravity_model_mujoco_path:
@@ -388,11 +393,8 @@ class PiperControlNode(Node):
         torque = self._gravity_model.predict(positions).tolist()
       else:
         torque = None
-      self._arm_controller.command_joints(
-          positions,
-          kp_gains=kp_gains,
-          kd_gains=kd_gains,
-          torques_ff=torque,
+      self._pending_joint_cmd = (
+          'position', positions, kp_gains, kd_gains, torque,
       )
 
     elif velocities:
@@ -405,10 +407,30 @@ class PiperControlNode(Node):
         )
 
       self.get_logger().debug(f"Received joint efforts: {efforts}")
-      self._arm_controller.command_torques(efforts)
+      self._pending_joint_cmd = ('effort', efforts, None, None, None)
 
     else:
       self.get_logger().warn(f"Received invalid joint command: {msg}")
+
+  def _send_joint_command(self) -> None:
+    """Send the latest joint command at a fixed rate.
+
+    Under CPU load, ROS messages arrive with up to 67ms gaps, causing jerky
+    actuator behavior. This timer re-sends the latest command at a steady
+    200Hz regardless of when messages arrive.
+    """
+    if self._teach_mode_active:
+      return
+    cmd = self._pending_joint_cmd
+    if cmd is None:
+      return
+    cmd_type, vals, kp, kd, torques = cmd
+    if cmd_type == 'position':
+      self._arm_controller.command_joints(
+          vals, kp_gains=kp, kd_gains=kd, torques_ff=torques,
+      )
+    elif cmd_type == 'effort':
+      self._arm_controller.command_torques(vals)
 
   def publish_joint_states(self):
     joint_positions = self._robot.get_joint_positions()
@@ -675,8 +697,9 @@ class PiperControlNode(Node):
 
     # Ensure that the last command the robot sees isnt a constant torque command
     # from the last joint configuration that teach mode saw.
-    cur_joint_positions = self._robot.get_joint_positions()
+    cur_joint_positions = list(self._robot.get_joint_positions())
     self._arm_controller.command_joints(cur_joint_positions)
+    self._pending_joint_cmd = ('position', cur_joint_positions, None, None, None)
 
     response.success = True
     response.message = "Teach mode disabled."
