@@ -414,6 +414,26 @@ class PiperControlNode(Node):
     joint_positions = self._robot.get_joint_positions()
     joint_velocities = self._robot.get_joint_velocities()
     joint_efforts = self._robot.get_joint_efforts()
+
+    # Check if joint positions are within limits
+    min_limits = piper_interface.JOINT_LIMITS_RAD["min"]
+    max_limits = piper_interface.JOINT_LIMITS_RAD["max"]
+    out_of_bounds_warnings = []
+    for i, (joint_name, val) in enumerate(zip(JOINT_NAMES, joint_positions)):
+      min_val = min_limits[i]
+      max_val = max_limits[i]
+      epsilon = 0.1
+      if val < min_val - epsilon or val > max_val + epsilon:
+        out_of_bounds_warnings.append(
+            f"  Joint {joint_name} out of bounds: {min_val} <= {val} <= {max_val}"
+        )
+
+    if out_of_bounds_warnings:
+      for warning in out_of_bounds_warnings:
+        self.get_logger().warning(warning)
+      self.get_logger().error("Joint positions out of bounds, exiting node")
+      raise SystemExit
+
     msg = sensor_msgs.JointState()
     msg.name = JOINT_NAMES
     msg.header.stamp = self.get_clock().now().to_msg()
