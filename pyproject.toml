@@ -1,6 +1,6 @@
 [project]
 name = "piper_ros"
-version = "1.2.1"
+version = "1.2.2"
 description = "A ROS2 interface to AgileX Piper arms."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 dependencies = [
     "numpy",
     "r2-transformations",
-    "piper_control>=1.3.3",
+    "piper_control>=1.3.4",
     "piper_sdk>=0.2.19",
 ]
 

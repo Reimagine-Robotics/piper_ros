@@ -20,7 +20,7 @@ package_name = "piper_control_ros2"
 
 setup(
     name=package_name,
-    version="1.2.1",
+    version="1.2.2",
     packages=find_packages(exclude=["test"]),
     data_files=[
         (
