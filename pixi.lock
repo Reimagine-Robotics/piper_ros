@@ -713,7 +713,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/7f/ba/de3630757c7d7fc2086aaf3994926d6b869d31586e4d0c14f1666af31b93/glfw-2.9.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38.p39.p310.p311.p312.p313-none-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/6d/87/f5454b3e3844bb5c37037a4f3e5e6e70a37263f06d34c2a5b62e801a5b3f/mujoco-3.3.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/3f/945ef7ab14dc4f9d7f40288d2df998d1837ee0888ec3659c813487572faa/pip-25.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/e5/c2/b10388f3d54e8bb22c2ee7673bcf581699fab124113aff224615731cffa9/piper_control-1.3.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/d1/d1/603b5a283ee33ad58ca022315e43fc5217b26be6bf80225d9e0e2074a68d/piper_control-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/33/1c/ba7ff89bc051bbb809be27038f1ba502efca717ce305c0a4e28accd78bf3/piper_sdk-0.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/92/44/8634af40b0db528b5b37e901c0dc67321354880d251bf8965901d57693a5/PyOpenGL-3.1.9-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/08/b3/2844ad99e2b8333613973cb25e3ae14b641fe55e96474907e57a08715769/python_can-4.6.0-py3-none-any.whl
@@ -4990,10 +4990,10 @@ packages:
   version: '25.2'
   sha256: 6d67a2b4e7f14d8b31b8b52648866fa717f45a1eb70e83002f4331d07e953717
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/e5/c2/b10388f3d54e8bb22c2ee7673bcf581699fab124113aff224615731cffa9/piper_control-1.3.2-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/d1/d1/603b5a283ee33ad58ca022315e43fc5217b26be6bf80225d9e0e2074a68d/piper_control-1.3.4-py3-none-any.whl
   name: piper-control
-  version: 1.3.2
-  sha256: 17eefc6ecc85ddea957cdfcabfc9045b33d452d2da3292727a9770557e85326f
+  version: 1.3.4
+  sha256: fde3b77a85f947d941df99b7bc54f394cec84b8a117ece8a04868c0859f8c998
   requires_dist:
   - numpy
   - packaging
@@ -5003,12 +5003,12 @@ packages:
   requires_python: '>=3.10'
 - pypi: ./
   name: piper-ros
-  version: 1.2.0
-  sha256: bd5a80851175fddabb3929b1347443bbc52645ec466023fd4f84c16d2ebf6c9a
+  version: 1.2.2
+  sha256: 01ed153fda732f8e61fb819de8b044f5b0890b2640ae6f2211e4aaca462587d8
   requires_dist:
   - numpy
   - r2-transformations
-  - piper-control>=1.3.1
+  - piper-control>=1.3.4
   - piper-sdk>=0.2.19
   - pytest ; extra == 'test'
   requires_python: '>=3.10'

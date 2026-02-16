@@ -9,7 +9,12 @@ import os
 import signal
 
 import rclpy
-from piper_control import piper_connect, piper_control, piper_init, piper_interface
+from piper_control import (
+    piper_connect,
+    piper_control,
+    piper_init,
+    piper_interface,
+)
 from rclpy import logging
 from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
@@ -633,9 +638,8 @@ class PiperControlNode(Node):
       response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
-    status = self._robot.get_arm_status()
     response.success = True
-    response.message = f"Robot status: {status}"
+    response.message = _format_status(self._robot)
     return response
 
   def handle_is_enabled(
@@ -697,6 +701,62 @@ class PiperControlNode(Node):
     metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
+
+
+def _format_status(robot: piper_interface.PiperInterface) -> str:
+  """Format a human-readable status string for the arm and gripper."""
+  error_names = {False: "OK", True: "ERROR"}
+  lines: list[str] = []
+
+  arm_status = robot.get_arm_status()
+  s = arm_status.arm_status
+  lines.append("Arm Status:")
+  lines.append(f"ctrl_mode: {piper_interface.ControlMode(s.ctrl_mode).name}")
+  lines.append(f"arm_status: {piper_interface.ArmStatus(s.arm_status).name}")
+  lines.append(f"mode_feed: {piper_interface.MoveMode(s.mode_feed).name}")
+  lines.append(
+      f"teach_mode: {piper_interface.TeachStatus(s.teach_status).name}"
+  )
+  lines.append(
+      f"motion_status: {piper_interface.MotionStatus(s.motion_status).name}"
+  )
+  lines.append(f"trajectory_num: {s.trajectory_num}")
+  lines.append(f"err_code: {s.err_code}")
+
+  err_code = s.err_code
+  limit_errors = [bool(err_code & (1 << b)) for b in range(6)]
+  comms_errors = [bool(err_code & (1 << (b + 9))) for b in range(6)]
+  motor_errors = robot.get_motor_errors()
+  arm_msgs = robot.piper.GetArmLowSpdInfoMsgs()
+  for i in range(6):
+    limit = limit_errors[i]
+    comms = comms_errors[i]
+    motor = motor_errors[i]
+    lines.append(
+        f"  Joint {i+1}:"
+        f" limit={error_names[limit]}"
+        f" comms={error_names[comms]}"
+        f" motor={error_names[motor]}"
+    )
+    if motor:
+      foc_status = getattr(arm_msgs, f"motor_{i + 1}").foc_status
+      lines.append(f"    foc_status: {foc_status}")
+
+  gripper_status = robot.get_gripper_status()
+  foc = gripper_status.gripper_state.foc_status
+  lines.append("\nGripper Status:")
+  lines.append(f"  voltage_too_low     : {error_names[foc.voltage_too_low]}")
+  lines.append(f"  motor_overheating   : {error_names[foc.motor_overheating]}")
+  lines.append(f"  driver_overcurrent  : {error_names[foc.driver_overcurrent]}")
+  lines.append(f"  driver_overheating  : {error_names[foc.driver_overheating]}")
+  lines.append(f"  sensor_status       : {error_names[foc.sensor_status]}")
+  lines.append(
+      f"  driver_error_status : {error_names[foc.driver_error_status]}"
+  )
+  lines.append(f"  driver_enable_status: {foc.driver_enable_status}")
+  lines.append(f"  homing_status       : {error_names[foc.homing_status]}")
+
+  return "\n".join(lines)
 
 
 def term_handler(signum, frame, node: PiperControlNode) -> None:
