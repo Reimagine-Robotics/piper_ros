@@ -724,8 +724,8 @@ def _format_status(robot: piper_interface.PiperInterface) -> str:
   lines.append(f"err_code: {s.err_code}")
 
   err_code = s.err_code
-  limit_errors = [bool(err_code & (1 << b)) for b in range(6)]
-  comms_errors = [bool(err_code & (1 << (b + 9))) for b in range(6)]
+  comms_errors = [bool(err_code & (1 << b)) for b in range(6)]
+  limit_errors = [bool(err_code & (1 << (b + 8))) for b in range(6)]
   motor_errors = robot.get_motor_errors()
   arm_msgs = robot.piper.GetArmLowSpdInfoMsgs()
   for i in range(6):
