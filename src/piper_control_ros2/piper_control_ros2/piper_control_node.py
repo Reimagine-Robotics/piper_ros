@@ -9,7 +9,12 @@ import os
 import signal
 
 import rclpy
-from piper_control import piper_connect, piper_control, piper_init, piper_interface
+from piper_control import (
+    piper_connect,
+    piper_control,
+    piper_init,
+    piper_interface,
+)
 from rclpy import logging
 from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
@@ -633,9 +638,8 @@ class PiperControlNode(Node):
       response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
     del request
-    status = self._robot.get_arm_status()
     response.success = True
-    response.message = f"Robot status: {status}"
+    response.message = self._robot.format_status()
     return response
 
   def handle_is_enabled(
