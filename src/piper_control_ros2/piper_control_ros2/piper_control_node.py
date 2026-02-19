@@ -639,7 +639,7 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
     response.success = True
-    response.message = _format_status(self._robot)
+    response.message = self._robot.format_status()
     return response
 
   def handle_is_enabled(
@@ -701,11 +701,6 @@ class PiperControlNode(Node):
     metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
-
-
-def _format_status(robot: piper_interface.PiperInterface) -> str:
-  """Format a human-readable status string for the arm and gripper."""
-  return robot.format_status()
 
 
 def term_handler(signum, frame, node: PiperControlNode) -> None:
