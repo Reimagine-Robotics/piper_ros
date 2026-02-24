@@ -323,6 +323,7 @@ class PiperControlNode(Node):
           "Please install piper_control with gravity support.",
       ) from e
 
+    firmware_version = self._robot.get_piper_firmware_version()
     self.get_logger().info("Gravity compensation:")
     self.get_logger().info(f"  model_type: {self.gravity_model_type}")
     self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
@@ -330,10 +331,12 @@ class PiperControlNode(Node):
         f"  samples_path: {self.gravity_samples_path or None}"
     )
     self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
+    self.get_logger().info(f"  firmware_version: {firmware_version}")
     return gravity_compensation.GravityCompensationModel(
         samples_path=self.gravity_samples_path,
         model_path=self.gravity_model_mujoco_path,
         model_type=gravity_compensation.ModelType(self.gravity_model_type),
+        firmware_version=firmware_version,
     )
 
   def clean_stop(self) -> None:
