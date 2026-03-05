@@ -136,9 +136,7 @@ class PiperControlNode(Node):
 
     self.declare_parameter("piper_arm_type", "PIPER")
     self._piper_arm_type = (
-        self.get_parameter("piper_arm_type")
-        .get_parameter_value()
-        .string_value
+        self.get_parameter("piper_arm_type").get_parameter_value().string_value
     )
 
     self.declare_parameter("piper_gripper_type", "V2")  # 10 cm gripper.
@@ -167,9 +165,9 @@ class PiperControlNode(Node):
       )
 
     self._robot = piper_interface.PiperInterface(
-      can_port=self.can_port,
-      piper_arm_type=_get_piper_arm_type(self._piper_arm_type),
-      piper_gripper_type=_get_piper_gripper_type(self._piper_gripper_type),
+        can_port=self.can_port,
+        piper_arm_type=_get_piper_arm_type(self._piper_arm_type),
+        piper_gripper_type=_get_piper_gripper_type(self._piper_gripper_type),
     )
 
     # Get the appropriate rest position based on arm orientation
@@ -731,6 +729,7 @@ def _get_piper_arm_type(
         f"Invalid piper_arm_type: {piper_arm_type_str}. Valid options are: "
         f"{[t.name for t in piper_interface.PiperArmType]}",
     ) from e
+
 
 def _get_piper_gripper_type(
     piper_gripper_type_str: str,
