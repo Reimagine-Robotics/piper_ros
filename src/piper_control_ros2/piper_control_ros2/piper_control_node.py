@@ -359,9 +359,9 @@ class PiperControlNode(Node):
     efforts = list(joint_command.efforts)
 
     if positions:
-      if velocities or efforts:
+      if efforts:
         self.get_logger().warn(
-            "Received joint positions, but also velocities or efforts",
+            "Received joint positions, but also efforts",
         )
 
       self.get_logger().debug(f"Received joint positions: {positions}")
@@ -394,6 +394,7 @@ class PiperControlNode(Node):
           kp_gains=kp_gains,
           kd_gains=kd_gains,
           torques_ff=torque,
+          velocities=velocities,
       )
 
     elif velocities:
