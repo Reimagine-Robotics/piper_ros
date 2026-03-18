@@ -36,7 +36,10 @@ class TeachController:
       hover_torque = self._gravity_model.predict(qpos)
       # Stability torque acts to counteract joint movement. A dampener
       # basically.
-      stability_torque = -qvel * 1.0  # Damping factor
+      # Damping factor. The original value of 1.0 was tuned when
+      # get_joint_velocities() had a ~57x scaling bug (piper_control#68).
+      # 1/57 ≈ 0.018 restores the original effective damping.
+      stability_torque = -qvel * 0.018
       applied_torque = hover_torque + stability_torque
       self._controller.command_torques(applied_torque)
     else:
