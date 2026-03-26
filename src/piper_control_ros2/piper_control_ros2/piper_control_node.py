@@ -120,20 +120,6 @@ class PiperControlNode(Node):
         .string_value
     )
 
-    self.declare_parameter("gravity_samples_path", "")
-    self.gravity_samples_path = (
-        self.get_parameter("gravity_samples_path")
-        .get_parameter_value()
-        .string_value
-    )
-
-    self.declare_parameter("gravity_model_type", "direct")
-    self.gravity_model_type = (
-        self.get_parameter("gravity_model_type")
-        .get_parameter_value()
-        .string_value
-    )
-
     self.declare_parameter("piper_arm_type", "PIPER")
     self._piper_arm_type = (
         self.get_parameter("piper_arm_type").get_parameter_value().string_value
@@ -336,19 +322,13 @@ class PiperControlNode(Node):
 
     firmware_version = self._robot.get_piper_firmware_version()
     self.get_logger().info("Gravity compensation:")
-    self.get_logger().info(f"  model_type: {self.gravity_model_type}")
     self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
-    self.get_logger().info(
-        f"  samples_path: {self.gravity_samples_path or None}"
-    )
     self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
     self.get_logger().info(f"  firmware_version: {firmware_version}")
     self.get_logger().info(f"  arm type: {self._piper_arm_type}")
     self.get_logger().info(f"  gripper type: {self._piper_gripper_type}")
     return gravity_compensation.GravityCompensationModel(
-        samples_path=self.gravity_samples_path,
         model_path=self.gravity_model_mujoco_path,
-        model_type=gravity_compensation.ModelType(self.gravity_model_type),
         firmware_version=firmware_version,
     )
 
@@ -709,11 +689,9 @@ class PiperControlNode(Node):
   def publish_node_metadata(self) -> None:
     """Publish metadata about the node."""
     metadata = get_metadata.get_metadata(self._robot)
-    metadata["gravity_model_type"] = self.gravity_model_type
     metadata["gravity_model_mujoco_path"] = (
         self.gravity_model_mujoco_path or None
     )
-    metadata["gravity_samples_path"] = self.gravity_samples_path or None
     metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
