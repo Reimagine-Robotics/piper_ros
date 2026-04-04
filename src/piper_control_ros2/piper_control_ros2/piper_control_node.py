@@ -355,9 +355,7 @@ class PiperControlNode(Node):
       assert self.gravity_model_archive
       archive_path, model_filename = self._parse_gravity_model_archive()
       if not os.path.isfile(archive_path):
-        self.get_logger().warn(
-            f"Archive path not found: {archive_path}"
-        )
+        self.get_logger().warn(f"Archive path not found: {archive_path}")
         return None
 
       model_archive_out_dir_path = tempfile.mkdtemp()
@@ -365,7 +363,9 @@ class PiperControlNode(Node):
       with tarfile.open(archive_path) as model_archive:
         model_archive.extractall(model_archive_out_dir_path)
 
-      mujoco_model_path = str(pathlib.Path(model_archive_out_dir_path) / model_filename)
+      mujoco_model_path = str(
+        pathlib.Path(model_archive_out_dir_path) / model_filename
+      )
 
     try:
       # pylint: disable-next=import-outside-toplevel
