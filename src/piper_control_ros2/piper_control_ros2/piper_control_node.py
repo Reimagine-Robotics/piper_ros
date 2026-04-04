@@ -364,7 +364,7 @@ class PiperControlNode(Node):
         model_archive.extractall(model_archive_out_dir_path)
 
       mujoco_model_path = str(
-        pathlib.Path(model_archive_out_dir_path) / model_filename
+          pathlib.Path(model_archive_out_dir_path) / model_filename
       )
 
     try:
