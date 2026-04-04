@@ -6,7 +6,10 @@ import dataclasses
 import functools
 import json
 import os
+import pathlib
 import signal
+import tarfile
+import tempfile
 
 import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
@@ -116,6 +119,17 @@ class PiperControlNode(Node):
     self.declare_parameter("gravity_model_mujoco_path", "")
     self.gravity_model_mujoco_path = (
         self.get_parameter("gravity_model_mujoco_path")
+        .get_parameter_value()
+        .string_value
+    )
+
+    # A combination of a path to an archive containing a Mujoco model, and a
+    # name of the model xml file inside the archive. This parameter should be
+    # of the form "path:filename". So for example it can be
+    # "/data/piper/model.tar.xz:mjmodel.xml".
+    self.declare_parameter("gravity_model_archive", "")
+    self.gravity_model_archive = (
+        self.get_parameter("gravity_model_archive")
         .get_parameter_value()
         .string_value
     )
@@ -301,16 +315,57 @@ class PiperControlNode(Node):
         autostart=False,
     )
 
-  def _create_gravity_model(self):
-    """Create and return gravity compensation model, or None if unavailable."""
-    if not self.gravity_model_mujoco_path:
-      self.get_logger().info("No gravity model path provided.")
+  def _parse_gravity_model_archive(self) -> tuple[str, str] | None:
+    """Parse the gravity model archive parameter."""
+    if not self.gravity_model_archive:
       return None
-    if not os.path.isfile(self.gravity_model_mujoco_path):
+    parts = self.gravity_model_archive.split(":")
+    if len(parts) != 2:
       self.get_logger().warn(
-          f"Mujoco path not found: {self.gravity_model_mujoco_path}"
+          f"Invalid gravity model archive: {self.gravity_model_archive}"
       )
       return None
+
+    if not parts[1].endswith("xml"):
+      self.get_logger().warn(
+          f"Gravity archive model name does not end with xml: {self.gravity_model_archive}"
+      )
+      return None
+
+    return parts[0], parts[1]
+
+  def _create_gravity_model(self):
+    """Create and return gravity compensation model, or None if unavailable."""
+    if not self.gravity_model_mujoco_path and not self.gravity_model_archive:
+      self.get_logger().info("No gravity model path/archive provided.")
+      return None
+
+    mujoco_model_path = None
+
+    if self.gravity_model_mujoco_path:
+      if not os.path.isfile(self.gravity_model_mujoco_path):
+        self.get_logger().warn(
+            f"Mujoco path not found: {self.gravity_model_mujoco_path}"
+        )
+        return None
+
+      mujoco_model_path = self.gravity_model_mujoco_path
+
+    else:
+      assert self.gravity_model_archive
+      archive_path, model_filename = self._parse_gravity_model_archive()
+      if not os.path.isfile(archive_path):
+        self.get_logger().warn(
+            f"Archive path not found: {archive_path}"
+        )
+        return None
+
+      model_archive_out_dir_path = tempfile.mkdtemp()
+
+      with tarfile.open(archive_path) as model_archive:
+        model_archive.extractall(model_archive_out_dir_path)
+
+      mujoco_model_path = str(pathlib.Path(model_archive_out_dir_path) / model_filename)
 
     try:
       # pylint: disable-next=import-outside-toplevel
@@ -328,7 +383,7 @@ class PiperControlNode(Node):
     self.get_logger().info(f"  arm type: {self._piper_arm_type}")
     self.get_logger().info(f"  gripper type: {self._piper_gripper_type}")
     return gravity_compensation.GravityCompensationModel(
-        model_path=self.gravity_model_mujoco_path,
+        model_path=mujoco_model_path,
         firmware_version=firmware_version,
     )
 
@@ -693,6 +748,7 @@ class PiperControlNode(Node):
     metadata["gravity_model_mujoco_path"] = (
         self.gravity_model_mujoco_path or None
     )
+    metadata["gravity_model_archive"] = self.gravity_model_archive or None
     metadata["arm_orientation"] = self.arm_orientation
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
