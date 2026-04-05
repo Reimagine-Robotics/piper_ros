@@ -328,7 +328,8 @@ class PiperControlNode(Node):
 
     if not parts[1].endswith("xml"):
       self.get_logger().warn(
-          f"Gravity archive model name does not end with xml: {self.gravity_model_archive}"
+          "Gravity archive model name does not end with xml: "
+          f"{self.gravity_model_archive}"
       )
       return None
 
