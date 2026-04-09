@@ -125,8 +125,8 @@ class PiperControlNode(Node):
 
     # A combination of a path to an archive containing a Mujoco model, and a
     # name of the model xml file inside the archive. This parameter should be
-    # of the form "path:filename". So for example it can be
-    # "/data/piper/model.tar.xz:mjmodel.xml".
+    # of the form "path#filename". So for example it can be
+    # "/data/piper/model.tar.xz#mjmodel.xml".
     self.declare_parameter("gravity_model_archive", "")
     self.gravity_model_archive = (
         self.get_parameter("gravity_model_archive")
@@ -319,7 +319,7 @@ class PiperControlNode(Node):
     """Parse the gravity model archive parameter."""
     if not self.gravity_model_archive:
       return None
-    parts = self.gravity_model_archive.split(":")
+    parts = self.gravity_model_archive.split("#")
     if len(parts) != 2:
       self.get_logger().warn(
           f"Invalid gravity model archive: {self.gravity_model_archive}"
