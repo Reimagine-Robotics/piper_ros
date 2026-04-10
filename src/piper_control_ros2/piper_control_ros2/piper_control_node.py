@@ -378,7 +378,12 @@ class PiperControlNode(Node):
 
     firmware_version = self._robot.get_piper_firmware_version()
     self.get_logger().info("Gravity compensation:")
-    self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
+
+    if self.gravity_model_mujoco_path:
+      self.get_logger().info(f"  mujoco_path: {self.gravity_model_mujoco_path}")
+    else:
+      self.get_logger().info(f"  mujoco_archive: {self.gravity_model_archive}")
+
     self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
     self.get_logger().info(f"  firmware_version: {firmware_version}")
     self.get_logger().info(f"  arm type: {self._piper_arm_type}")
