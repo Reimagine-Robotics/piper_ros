@@ -377,6 +377,7 @@ class PiperControlNode(Node):
       ) from e
 
     firmware_version = self._robot.get_piper_firmware_version()
+    scaling = gravity_compensation.direct_scaling_factors(firmware_version)
     self.get_logger().info("Gravity compensation:")
 
     if self.gravity_model_mujoco_path:
@@ -386,6 +387,7 @@ class PiperControlNode(Node):
 
     self.get_logger().info(f"  arm_orientation: {self.arm_orientation}")
     self.get_logger().info(f"  firmware_version: {firmware_version}")
+    self.get_logger().info(f"  direct scaling: {scaling}")
     self.get_logger().info(f"  arm type: {self._piper_arm_type}")
     self.get_logger().info(f"  gripper type: {self._piper_gripper_type}")
     return gravity_compensation.GravityCompensationModel(
