@@ -5,11 +5,13 @@ from __future__ import annotations
 import dataclasses
 import functools
 import json
+import math
 import os
 import pathlib
 import signal
 import tarfile
 import tempfile
+import time
 
 import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
@@ -270,6 +272,11 @@ class PiperControlNode(Node):
         std_srvs.Trigger,
         f"{self.namespace}/is_enabled",
         self.handle_is_enabled,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
+        f"{self.namespace}/calibrate_j0",
+        self.handle_calibrate_j0,  # type: ignore
     )
 
     # Publish metadata about the node.
@@ -711,6 +718,61 @@ class PiperControlNode(Node):
     is_enabled = self._robot.is_enabled()
     response.success = True
     response.message = f"Robot enabled: {is_enabled}"
+    return response
+
+  def _push_against_hardstop(self):
+    self._arm_controller.command_torques([-0.5] + [None] * 5)
+    time.sleep(0.1)
+
+    while True:
+      jvel = self._robot.get_joint_velocities()
+      if math.isclose(jvel[0], 0.0, abs_tol=0.001):
+        break
+      time.sleep(1.0 / CONTROL_HZ)
+
+  def _sample_j0(self) -> float:
+    result = 0.0
+    num_samples = 20
+    for _ in range(num_samples):
+      result += self._robot.get_joint_positions()[0] / float(num_samples)
+      time.sleep(1.0 / CONTROL_HZ)
+    return result
+
+  def handle_calibrate_j0(
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
+    del request
+
+    return_to_teach_mode = False
+    if self._teach_mode_active:
+      return_to_teach_mode = True
+      self._teach_mode_active = False
+      self._teach_mode_timer.cancel()
+
+    return_joint_positions = self._robot.get_joint_positions()
+
+    target = list(return_joint_positions)
+    target[0] = piper_interface.J0_MIN_HARDSTOP + 0.1
+    self._arm_controller.move_to_position(target=target, threshold=0.1)
+
+    self._push_against_hardstop()
+
+    sensed_j0_angle = self._sample_j0()
+    calibrated_j0_offset = piper_interface.J0_MIN_HARDSTOP - sensed_j0_angle
+    self._robot.set_j0_calibration_offset(calibrated_j0_offset)
+
+    self._arm_controller.move_to_position(
+        target=return_joint_positions, threshold=0.1
+    )
+
+    if return_to_teach_mode:
+      self._teach_mode_active = True
+      self._teach_mode_timer.reset()
+
+    response.success = True
+    response.message = f"Robot j0 offset calibrated: {calibrated_j0_offset}"
     return response
 
   def handle_teach_mode_enable(
