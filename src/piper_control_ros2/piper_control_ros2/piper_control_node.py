@@ -722,7 +722,7 @@ class PiperControlNode(Node):
     return response
 
   def _push_against_hardstop(self):
-    self._arm_controller.command_torques([-0.3] + [None] * 5)
+    self._arm_controller.command_torques([-0.7] + [None] * 5)
     time.sleep(0.2)
 
     while True:
