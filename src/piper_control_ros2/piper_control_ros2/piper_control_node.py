@@ -722,7 +722,7 @@ class PiperControlNode(Node):
     return response
 
   def _push_against_hardstop(self):
-    self._arm_controller.command_torques([-0.5] + [None] * 5)
+    self._arm_controller.command_torques([-0.3] + [None] * 5)
     time.sleep(0.2)
 
     while True:
@@ -734,7 +734,7 @@ class PiperControlNode(Node):
 
   def _sample_j0(self) -> float:
     samples = []
-    for _ in range(20):
+    for _ in range(30):
       raw_j0 = self._robot.get_joint_positions(raw=True)[0]
       samples.append(raw_j0)
       time.sleep(1.0 / CONTROL_HZ)
