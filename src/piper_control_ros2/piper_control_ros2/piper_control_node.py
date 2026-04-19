@@ -733,7 +733,9 @@ class PiperControlNode(Node):
       if math.isclose(jvel[0], 0.0, abs_tol=0.001):
         samples.append(raw_j0)
       time.sleep(1.0 / CONTROL_HZ)
-    return np.median(samples)
+
+    print(f"samples: {samples}")
+    return np.mean(samples)
 
   def handle_calibrate_j0(
       self,
