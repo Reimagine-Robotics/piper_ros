@@ -734,7 +734,7 @@ class PiperControlNode(Node):
         samples.append(raw_j0)
       time.sleep(2.0 / CONTROL_HZ)
 
-    return np.min(samples)
+    return np.median(samples)
 
   def handle_calibrate_j0(
       self,
