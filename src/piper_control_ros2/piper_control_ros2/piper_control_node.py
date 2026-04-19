@@ -13,6 +13,7 @@ import tarfile
 import tempfile
 import time
 
+import numpy as np
 import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
 from rclpy import logging
@@ -722,22 +723,22 @@ class PiperControlNode(Node):
 
   def _push_against_hardstop(self):
     self._arm_controller.command_torques([-0.5] + [None] * 5)
-    time.sleep(0.1)
+    time.sleep(0.2)
 
     while True:
       jvel = self._robot.get_joint_velocities()
       if math.isclose(jvel[0], 0.0, abs_tol=0.001):
         break
       time.sleep(1.0 / CONTROL_HZ)
+    time.sleep(0.1)
 
   def _sample_j0(self) -> float:
-    result = 0.0
-    num_samples = 20
-    for _ in range(num_samples):
+    samples = []
+    for _ in range(20):
       raw_j0 = self._robot.get_joint_positions(raw=True)[0]
-      result += raw_j0 / float(num_samples)
+      samples.append(raw_j0)
       time.sleep(1.0 / CONTROL_HZ)
-    return result
+    return np.median(samples)
 
   def handle_calibrate_j0(
       self,
