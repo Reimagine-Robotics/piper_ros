@@ -734,7 +734,8 @@ class PiperControlNode(Node):
     result = 0.0
     num_samples = 20
     for _ in range(num_samples):
-      result += self._robot.get_joint_positions()[0] / float(num_samples)
+      raw_j0 = self._robot.get_joint_positions(raw=True)[0]
+      result += raw_j0 / float(num_samples)
       time.sleep(1.0 / CONTROL_HZ)
     return result
 
