@@ -756,7 +756,9 @@ class PiperControlNode(Node):
     return_joint_positions = self._robot.get_joint_positions()
 
     target = list(return_joint_positions)
-    target[0] = piper_interface.J0_MIN_HARDSTOP + 0.1
+
+    arm_type = _get_piper_arm_type(self._piper_arm_type)
+    target[0] = piper_interface.get_joint_limits(arm_type)["min"][0] + 0.01
     self._arm_controller.move_to_position(target=target, threshold=0.1)
 
     self._push_against_hardstop()
