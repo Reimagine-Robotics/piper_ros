@@ -722,7 +722,7 @@ class PiperControlNode(Node):
     return response
 
   def _push_and_sample_hardstop(self) -> float:
-    self._arm_controller.command_torques([-0.5] + [None] * 5)
+    self._arm_controller.command_torques([-0.3] + [None] * 5)
     time.sleep(0.2)  # Wait a bit for the arm to start moving.
 
     samples = []
@@ -734,7 +734,6 @@ class PiperControlNode(Node):
         samples.append(raw_j0)
       time.sleep(1.0 / CONTROL_HZ)
 
-    print(f"samples: {samples}")
     return np.mean(samples)
 
   def handle_calibrate_j0(
