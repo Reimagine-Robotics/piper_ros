@@ -723,10 +723,10 @@ class PiperControlNode(Node):
 
   def _push_and_sample_hardstop(self) -> float:
     self._arm_controller.command_torques([-0.3] + [None] * 5)
-    time.sleep(0.3)  # Wait a bit for the arm to start moving.
+    time.sleep(0.2)  # Wait a bit for the arm to start moving.
 
     samples = []
-    while len(samples) < 50:
+    while len(samples) < 30:
       jvel = self._robot.get_joint_velocities()
       raw_j0 = self._robot.get_joint_positions(raw=True)[0]
 
@@ -734,7 +734,7 @@ class PiperControlNode(Node):
         samples.append(raw_j0)
       time.sleep(2.0 / CONTROL_HZ)
 
-    return np.median(samples)
+    return np.min(samples)
 
   def handle_calibrate_j0(
       self,
@@ -760,11 +760,11 @@ class PiperControlNode(Node):
     sensed_j0_angle = self._push_and_sample_hardstop()
 
     calibrated_j0_offset = piper_interface.J0_MIN_HARDSTOP - sensed_j0_angle
-    self._robot.set_j0_calibration_offset(calibrated_j0_offset)
 
     self._arm_controller.move_to_position(
         target=return_joint_positions, threshold=0.1
     )
+    self._robot.set_j0_calibration_offset(calibrated_j0_offset)
 
     if return_to_teach_mode:
       self._teach_mode_active = True
