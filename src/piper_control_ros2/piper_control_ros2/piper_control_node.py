@@ -722,6 +722,7 @@ class PiperControlNode(Node):
     return response
 
   def _push_and_sample_hardstop(self) -> float:
+    """Push toward the hard-stop, returns the joint value once stopped."""
     self._arm_controller.command_torques([-0.3] + [None] * 5)
     time.sleep(0.2)  # Wait a bit for the arm to start moving.
 
@@ -741,6 +742,12 @@ class PiperControlNode(Node):
       request: std_srvs.Trigger.Request,
       response: std_srvs.Trigger.Response,
   ) -> std_srvs.Trigger.Response:
+    """Calibrates the J0 sensors using the min hard-stop.
+
+    Moves the arm near the hard-stop, pushes against it with torque and records
+    the sensed joint value at the hard-stop. Then moves and returns the arm to
+    the previous state it was in.
+    """
     del request
 
     return_to_teach_mode = False
