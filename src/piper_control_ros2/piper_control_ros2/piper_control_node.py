@@ -236,6 +236,11 @@ class PiperControlNode(Node):
     )
     self.create_service(
         std_srvs.Trigger,
+        f"{self.namespace}/clear_errors",
+        self.handle_clear_errors,  # type: ignore
+    )
+    self.create_service(
+        std_srvs.Trigger,
         f"{self.namespace}/enable",
         self.handle_enable,  # type: ignore
     )
@@ -560,6 +565,24 @@ class PiperControlNode(Node):
 
     response.success = True
     response.message = "Robot resumed from emergency stop."
+    return response
+
+  def handle_clear_errors(
+      self,
+      request: std_srvs.Trigger.Request,
+      response: std_srvs.Trigger.Response,
+  ) -> std_srvs.Trigger.Response:
+    del request
+
+    try:
+      piper_init.clear_joint_errors(self._robot)
+      response.success = True
+      response.message = "Joint errors cleared."
+    except (RuntimeError, TimeoutError) as e:
+      self.get_logger().warn(f"Clear errors failed: {e}")
+      response.success = False
+      response.message = f"Clear errors failed: {e}"
+
     return response
 
   def handle_enable(
