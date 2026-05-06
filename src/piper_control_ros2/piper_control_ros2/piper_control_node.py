@@ -435,11 +435,6 @@ class PiperControlNode(Node):
     efforts = list(joint_command.efforts)
 
     if positions:
-      if efforts:
-        self.get_logger().warn(
-            "Received joint positions, but also efforts",
-        )
-
       self.get_logger().debug(f"Received joint positions: {positions}")
       if joint_command.kp_gains:
         kp_gains = list(joint_command.kp_gains)
@@ -460,11 +455,21 @@ class PiperControlNode(Node):
       else:
         kd_gains = None
 
+      torque = None
+
+      # If we have a gravity model, use it to compute feed-forward torques.
       if self._gravity_model:
-        # If we have a gravity model, use it to compute feed-forward torques.
         torque = self._gravity_model.predict(positions).tolist()
-      else:
-        torque = None
+
+      # If there is a user-provided torque, then use it as an additional
+      # residual over gravity (if any).
+      if efforts:
+        if torque is None:
+          torque = efforts
+        else:
+          assert len(efforts) == len(torque)
+          torque = [t + e for t, e in zip(torque, efforts)]
+
       self._arm_controller.command_joints(
           positions,
           kp_gains=kp_gains,
