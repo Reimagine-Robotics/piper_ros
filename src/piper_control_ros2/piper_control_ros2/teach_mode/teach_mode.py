@@ -17,7 +17,7 @@ from piper_control import piper_control, piper_interface
 # get_joint_velocities() had a ~57x scaling bug (piper_control#68).
 # Now that we have a "hold" mode for teach, we can get away with a much smaller
 # gain and give a smoother control to the operator.
-_TEACH_DGAIN = 0.002
+_TEACH_DGAIN = np.array([0.0, 0.002, 0.002, 0.018, 0.018, 0.018])
 
 
 class TeachController:
