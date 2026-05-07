@@ -13,6 +13,12 @@ freely.
 import numpy as np
 from piper_control import piper_control, piper_interface
 
+# Velocity damping factor. The original value of 1.0 was tuned when
+# get_joint_velocities() had a ~57x scaling bug (piper_control#68).
+# Now that we have a "hold" mode for teach, we can get away with a much smaller
+# gain and give a smoother control to the operator.
+_TEACH_DGAIN = 0.002
+
 
 class TeachController:
   """A controller that allows teach mode by commanding grav comp torques."""
@@ -34,12 +40,8 @@ class TeachController:
       qvel = np.array(self._robot.get_joint_velocities())
 
       hover_torque = self._gravity_model.predict(qpos)
-      # Stability torque acts to counteract joint movement. A dampener
-      # basically.
-      # Damping factor. The original value of 1.0 was tuned when
-      # get_joint_velocities() had a ~57x scaling bug (piper_control#68).
-      # 1/57 ≈ 0.018 restores the original effective damping.
-      stability_torque = -qvel * 0.018
+      # Stability torque acts to counteract joint movement, a dampener.
+      stability_torque = -qvel * _TEACH_DGAIN
       applied_torque = hover_torque + stability_torque
       self._controller.command_torques(applied_torque)
     else:
