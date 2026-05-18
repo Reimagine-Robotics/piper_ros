@@ -19,6 +19,7 @@ from piper_control import piper_connect, piper_control, piper_init, piper_interf
 from rcl_interfaces import msg as rcl_interfaces_msg
 from rclpy import logging
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
@@ -203,7 +204,9 @@ class PiperControlNode(Node):
         "Initial joint_calibration_offsets:"
         f" {initial_joint_calibration_offsets}"
     )
-    self.add_on_set_parameters_callback(self._on_set_parameters)
+    # The on_set_parameters callback is registered later, after the
+    # joint_calibration_offsets publisher has been created — the callback
+    # needs to publish on successful updates.
 
     # Get the appropriate rest position based on arm orientation
     arm_orientation = piper_control.ArmOrientations.from_string(
@@ -228,6 +231,24 @@ class PiperControlNode(Node):
         .get_parameter_value()
         .string_value
     )
+
+    # Joint calibration offsets — latched publisher so late subscribers still
+    # get the current value. The published value is always read from
+    # self._robot (PiperInterface is the source of truth), not from the
+    # parameter store, so a future code path that mutates the offsets
+    # directly on the robot will still be reflected here via the timer below.
+    self.joint_calibration_offsets_pub = self.create_publisher(
+        std_msgs.Float64MultiArray,
+        f"{self.namespace}/joint_calibration_offsets",
+        QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
+        ),
+    )
+    self._publish_joint_calibration_offsets()
+    self.create_timer(1.0, self._publish_joint_calibration_offsets)
+    self.add_on_set_parameters_callback(self._on_set_parameters)
 
     # Joint control
     self.joint_state_pub = self.create_publisher(
@@ -478,7 +499,20 @@ class PiperControlNode(Node):
       self.get_logger().info(
           f"Applied joint_calibration_offsets: {value}"
       )
+      self._publish_joint_calibration_offsets()
     return rcl_interfaces_msg.SetParametersResult(successful=True)
+
+  def _publish_joint_calibration_offsets(self) -> None:
+    """Publish the current joint calibration offsets from PiperInterface.
+
+    PiperInterface is the single source of truth; this helper reads
+    self._robot.joint_calibration_offsets rather than the rclpy parameter
+    store so the published value always reflects what the robot is actually
+    applying (in case anything mutates the robot offsets directly).
+    """
+    msg = std_msgs.Float64MultiArray()
+    msg.data = list(self._robot.joint_calibration_offsets)
+    self.joint_calibration_offsets_pub.publish(msg)
 
   def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
     """Handle incoming joint commands.
