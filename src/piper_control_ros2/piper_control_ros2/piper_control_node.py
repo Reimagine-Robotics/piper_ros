@@ -16,6 +16,7 @@ import time
 import numpy as np
 import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
+from rcl_interfaces import msg as rcl_interfaces_msg
 from rclpy import logging
 from rclpy.node import Node
 from sensor_msgs import msg as sensor_msgs
@@ -149,6 +150,22 @@ class PiperControlNode(Node):
         .string_value
     )
 
+    # Per-joint calibration offsets (radians, 6 floats, J0..J5). Added to
+    # readbacks and subtracted from commands inside piper_control. Useful for
+    # aligning one arm's joint frame to another's without re-zeroing (so
+    # trajectories recorded on a source arm produce the same physical motion
+    # when replayed on a target arm). Set at launch via -p, or at runtime
+    # via `ros2 param set <ns>/<node> joint_calibration_offsets "[...]"`.
+    self.declare_parameter(
+        "joint_calibration_offsets",
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    )
+    initial_joint_calibration_offsets = list(
+        self.get_parameter("joint_calibration_offsets")
+        .get_parameter_value()
+        .double_array_value
+    )
+
     # Create a CAN connection to robot.
     ports = piper_connect.find_ports()
     print(f"Available ports: {ports}")
@@ -172,6 +189,21 @@ class PiperControlNode(Node):
         piper_arm_type=_get_piper_arm_type(self._piper_arm_type),
         piper_gripper_type=_get_piper_gripper_type(self._piper_gripper_type),
     )
+
+    # Apply the launch-time joint_calibration_offsets value. The
+    # on_set_parameters callback below handles subsequent runtime updates,
+    # but it does NOT fire on initial declaration — apply manually here.
+    if len(initial_joint_calibration_offsets) != 6:
+      raise ValueError(
+          "joint_calibration_offsets parameter must have 6 values; got"
+          f" {len(initial_joint_calibration_offsets)}."
+      )
+    self._robot.set_joint_calibration_offsets(initial_joint_calibration_offsets)
+    self.get_logger().info(
+        "Initial joint_calibration_offsets:"
+        f" {initial_joint_calibration_offsets}"
+    )
+    self.add_on_set_parameters_callback(self._on_set_parameters)
 
     # Get the appropriate rest position based on arm orientation
     arm_orientation = piper_control.ArmOrientations.from_string(
@@ -414,6 +446,39 @@ class PiperControlNode(Node):
 
     piper_init.disable_arm(self._robot)
     piper_init.disable_gripper(self._robot)
+
+  def _on_set_parameters(
+      self, params: list,
+  ) -> rcl_interfaces_msg.SetParametersResult:
+    """Apply parameter updates received via /set_parameters.
+
+    Only joint_calibration_offsets is handled here; other parameter changes
+    are accepted unchanged (rclpy will update the stored value regardless of
+    what we return, as long as we return successful=True).
+    """
+    for p in params:
+      if p.name != "joint_calibration_offsets":
+        continue
+      value = list(p.value)
+      if len(value) != 6:
+        return rcl_interfaces_msg.SetParametersResult(
+            successful=False,
+            reason=(
+                "joint_calibration_offsets must have 6 values; got"
+                f" {len(value)}."
+            ),
+        )
+      try:
+        self._robot.set_joint_calibration_offsets(value)
+      except Exception as e:  # pylint: disable=broad-except
+        return rcl_interfaces_msg.SetParametersResult(
+            successful=False,
+            reason=f"Failed to apply joint_calibration_offsets: {e}",
+        )
+      self.get_logger().info(
+          f"Applied joint_calibration_offsets: {value}"
+      )
+    return rcl_interfaces_msg.SetParametersResult(successful=True)
 
   def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
     """Handle incoming joint commands.
