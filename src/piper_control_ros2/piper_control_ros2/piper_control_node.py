@@ -415,6 +415,43 @@ class PiperControlNode(Node):
     piper_init.disable_arm(self._robot)
     piper_init.disable_gripper(self._robot)
 
+  def _command_joints_with_gravity_ff(
+      self,
+      positions: list[float],
+      kp_gains: list[float] | None = None,
+      kd_gains: list[float] | None = None,
+      efforts: list[float] | None = None,
+      velocities: list[float] | None = None,
+  ) -> None:
+    """Command joint positions with gravity feed-forward torques.
+
+    All joint position commands must go through this method so that the
+    gravity model (when configured) always contributes its feed-forward
+    torque. User-provided efforts are added as a residual on top.
+    """
+    torque = None
+
+    # If we have a gravity model, use it to compute feed-forward torques.
+    if self._gravity_model:
+      torque = self._gravity_model.predict(positions).tolist()
+
+    # If there is a user-provided torque, then use it as an additional
+    # residual over gravity (if any).
+    if efforts:
+      if torque is None:
+        torque = efforts
+      else:
+        assert len(efforts) == len(torque)
+        torque = [t + e for t, e in zip(torque, efforts)]
+
+    self._arm_controller.command_joints(
+        positions,
+        kp_gains=kp_gains,
+        kd_gains=kd_gains,
+        torques_ff=torque,
+        velocities=velocities,
+    )
+
   def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
     """Handle incoming joint commands.
 
@@ -455,26 +492,11 @@ class PiperControlNode(Node):
       else:
         kd_gains = None
 
-      torque = None
-
-      # If we have a gravity model, use it to compute feed-forward torques.
-      if self._gravity_model:
-        torque = self._gravity_model.predict(positions).tolist()
-
-      # If there is a user-provided torque, then use it as an additional
-      # residual over gravity (if any).
-      if efforts:
-        if torque is None:
-          torque = efforts
-        else:
-          assert len(efforts) == len(torque)
-          torque = [t + e for t, e in zip(torque, efforts)]
-
-      self._arm_controller.command_joints(
+      self._command_joints_with_gravity_ff(
           positions,
           kp_gains=kp_gains,
           kd_gains=kd_gains,
-          torques_ff=torque,
+          efforts=efforts,
           velocities=velocities,
       )
 
@@ -834,9 +856,10 @@ class PiperControlNode(Node):
     self._teach_mode_timer.cancel()
 
     # Ensure that the last command the robot sees isnt a constant torque command
-    # from the last joint configuration that teach mode saw.
-    cur_joint_positions = self._robot.get_joint_positions()
-    self._arm_controller.command_joints(cur_joint_positions)
+    # from the last joint configuration that teach mode saw. Gravity
+    # feed-forward keeps the arm supported until the next streamed command.
+    cur_joint_positions = list(self._robot.get_joint_positions())
+    self._command_joints_with_gravity_ff(cur_joint_positions)
 
     response.success = True
     response.message = "Teach mode disabled."
