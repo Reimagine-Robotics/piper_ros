@@ -390,7 +390,10 @@ class PiperControlNode(Node):
       ) from e
 
     firmware_version = self._robot.get_piper_firmware_version()
-    scaling = gravity_compensation.direct_scaling_factors(firmware_version)
+    arm_type = _get_piper_arm_type(self._piper_arm_type)
+    scaling = gravity_compensation.direct_scaling_factors(
+        firmware_version, arm_type
+    )
     self.get_logger().info("Gravity compensation:")
 
     if self.gravity_model_mujoco_path:
@@ -406,6 +409,7 @@ class PiperControlNode(Node):
     return gravity_compensation.GravityCompensationModel(
         model_path=mujoco_model_path,
         firmware_version=firmware_version,
+        arm_type=arm_type,
     )
 
   def clean_stop(self) -> None:
