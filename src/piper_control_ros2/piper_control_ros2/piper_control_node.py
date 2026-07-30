@@ -22,7 +22,7 @@ from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
-from piper_control_ros2 import get_metadata
+from piper_control_ros2 import command_watchdog, get_metadata
 from piper_control_ros2.teach_mode import teach_mode
 
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
@@ -147,6 +147,13 @@ class PiperControlNode(Node):
         self.get_parameter("piper_gripper_type")
         .get_parameter_value()
         .string_value
+    )
+
+    self.declare_parameter("command_timeout_sec", 0.0)
+    self._command_watchdog = command_watchdog.CommandWatchdog(
+        self.get_parameter("command_timeout_sec")
+        .get_parameter_value()
+        .double_value
     )
 
     # Create a CAN connection to robot.
@@ -328,6 +335,17 @@ class PiperControlNode(Node):
         autostart=False,
     )
 
+    self._command_watchdog_timer = None
+    if self._command_watchdog.enabled:
+      watchdog_period = max(
+          min(self._command_watchdog.timeout_seconds / 2.0, 0.05),
+          1.0 / CONTROL_HZ,
+      )
+      self._command_watchdog_timer = self.create_timer(
+          watchdog_period,
+          self._check_command_watchdog,
+      )
+
   def _parse_gravity_model_archive(self) -> tuple[str, str] | None:
     """Parse the gravity model archive parameter."""
     if not self.gravity_model_archive:
@@ -496,6 +514,8 @@ class PiperControlNode(Node):
       else:
         kd_gains = None
 
+      if not self._command_watchdog.accept_command(time.monotonic()):
+        return
       self._command_joints_with_gravity_ff(
           positions,
           kp_gains=kp_gains,
@@ -514,6 +534,8 @@ class PiperControlNode(Node):
         )
 
       self.get_logger().debug(f"Received joint efforts: {efforts}")
+      if not self._command_watchdog.accept_command(time.monotonic()):
+        return
       self._arm_controller.command_torques(efforts)
 
     else:
@@ -638,6 +660,7 @@ class PiperControlNode(Node):
 
     self._arm_controller.start()
     self._gripper_controller.start()
+    self._command_watchdog.arm(time.monotonic())
 
     response.success = True
     response.message = "Robot enabled."
@@ -663,6 +686,7 @@ class PiperControlNode(Node):
       return response
 
     self._arm_controller.start()
+    self._command_watchdog.arm(time.monotonic())
 
     response.success = True
     response.message = "Arm enabled."
@@ -696,6 +720,7 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
+    self._command_watchdog.disarm()
     self._arm_controller.stop()
     self._gripper_controller.stop()
 
@@ -719,6 +744,7 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
+    self._command_watchdog.disarm()
     self._arm_controller.stop()
 
     try:
@@ -830,6 +856,8 @@ class PiperControlNode(Node):
     if return_to_teach_mode:
       self._teach_mode_active = True
       self._teach_mode_timer.reset()
+    else:
+      self._command_watchdog.arm(time.monotonic())
 
     response.success = True
     response.message = f"Robot j0 offset calibrated: {calibrated_j0_offset}"
@@ -842,6 +870,7 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
+    self._command_watchdog.disarm()
     self._teach_mode_active = True
     self._teach_mode_timer.reset()
 
@@ -864,6 +893,7 @@ class PiperControlNode(Node):
     # feed-forward keeps the arm supported until the next streamed command.
     cur_joint_positions = list(self._robot.get_joint_positions())
     self._command_joints_with_gravity_ff(cur_joint_positions)
+    self._command_watchdog.arm(time.monotonic())
 
     response.success = True
     response.message = "Teach mode disabled."
@@ -873,6 +903,18 @@ class PiperControlNode(Node):
     assert self._teach_mode_active
     self._teach_controller.step()
 
+  def _check_command_watchdog(self) -> None:
+    if not self._command_watchdog.check(time.monotonic()):
+      return
+
+    cur_joint_positions = list(self._robot.get_joint_positions())
+    self._command_joints_with_gravity_ff(cur_joint_positions)
+    self.get_logger().error(
+        "Joint command stream timed out after "
+        f"{self._command_watchdog.timeout_seconds:.3f}s; holding position "
+        "until the arm is enabled again."
+    )
+
   def publish_node_metadata(self) -> None:
     """Publish metadata about the node."""
     metadata = get_metadata.get_metadata(self._robot)
@@ -881,6 +923,8 @@ class PiperControlNode(Node):
     )
     metadata["gravity_model_archive"] = self.gravity_model_archive or None
     metadata["arm_orientation"] = self.arm_orientation
+    metadata["command_timeout_sec"] = self._command_watchdog.timeout_seconds
+    metadata["command_watchdog_tripped"] = self._command_watchdog.tripped
     msg = std_msgs.String(data=json.dumps(metadata))
     self.node_metadata_pub.publish(msg)
 
