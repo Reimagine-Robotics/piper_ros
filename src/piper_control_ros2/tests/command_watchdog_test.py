@@ -1,5 +1,6 @@
-import pytest
+"""Tests for the streamed arm command watchdog state machine."""
 
+import pytest
 from piper_control_ros2 import command_watchdog
 
 
