@@ -40,6 +40,9 @@ class CommandWatchdog:
     if self._tripped:
       return False
     if self._last_command_time is not None:
+      if self.enabled and now - self._last_command_time > self.timeout_seconds:
+        self._tripped = True
+        return False
       self._last_command_time = now
     return True
 

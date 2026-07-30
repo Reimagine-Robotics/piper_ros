@@ -214,7 +214,10 @@ class PiperControlNode(Node):
         std_msgs.Float64MultiArray,
         f"{self.namespace}/joint_commands",
         self.joint_cmd_callback,
-        qos_profile=10,
+        # Streamed commands supersede older commands. Keeping only the newest
+        # sample bounds the stale work that can remain queued after a publisher
+        # or network connection disappears.
+        qos_profile=1,
     )
 
     # Gripper control
@@ -583,6 +586,7 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
+    self._command_watchdog.disarm()
     try:
       self._arm_controller.stop()
       self._gripper_controller.stop()
@@ -596,6 +600,7 @@ class PiperControlNode(Node):
 
       self._arm_controller.start()
       self._gripper_controller.start()
+      self._command_watchdog.arm(time.monotonic())
 
       response.success = True
       response.message = "Robot reset."

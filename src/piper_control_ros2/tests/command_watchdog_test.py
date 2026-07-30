@@ -25,6 +25,14 @@ def test_fresh_commands_extend_deadline() -> None:
   assert watchdog.check(now=1.5)
 
 
+def test_late_command_trips_instead_of_extending_deadline() -> None:
+  watchdog = command_watchdog.CommandWatchdog(0.25)
+  watchdog.arm(now=1.0)
+
+  assert not watchdog.accept_command(now=1.3)
+  assert watchdog.tripped
+
+
 def test_trip_latches_until_rearmed() -> None:
   watchdog = command_watchdog.CommandWatchdog(0.25)
   watchdog.arm(now=1.0)
