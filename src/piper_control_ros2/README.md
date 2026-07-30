@@ -56,6 +56,11 @@ To start an arm under the namespace "piper":
 ros2 run piper_control_ros2 piper_control_node --ros-args -p namespace:=piper
 ```
 
+Set `command_timeout_sec` to make the node hold its measured joint positions
+when an enabled arm stops receiving joint commands. The timeout latches, so
+later commands are ignored until the arm is explicitly enabled again. A value
+of `0.0` keeps the watchdog disabled.
+
 ### Viewing Topics
 
 To see the list of active topics:
