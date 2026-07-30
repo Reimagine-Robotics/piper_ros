@@ -477,7 +477,11 @@ class PiperControlNode(Node):
         velocities=velocities,
     )
 
-  def joint_cmd_callback(self, msg: std_msgs.Float64MultiArray) -> None:
+  def joint_cmd_callback(
+      self,
+      msg: std_msgs.Float64MultiArray,
+      message_info: dict[str, object],
+  ) -> None:
     """Handle incoming joint commands.
 
     Args:
@@ -495,6 +499,11 @@ class PiperControlNode(Node):
     positions = list(joint_command.positions)
     velocities = list(joint_command.velocities)
     efforts = list(joint_command.efforts)
+    command_time = command_watchdog.received_monotonic_time(
+        message_info.get("received_timestamp"),
+        monotonic_now=time.monotonic(),
+        system_now_ns=time.time_ns(),
+    )
 
     if positions:
       self.get_logger().debug(f"Received joint positions: {positions}")
@@ -517,7 +526,7 @@ class PiperControlNode(Node):
       else:
         kd_gains = None
 
-      if not self._command_watchdog.accept_command(time.monotonic()):
+      if not self._command_watchdog.accept_command(command_time):
         return
       self._command_joints_with_gravity_ff(
           positions,
@@ -537,7 +546,7 @@ class PiperControlNode(Node):
         )
 
       self.get_logger().debug(f"Received joint efforts: {efforts}")
-      if not self._command_watchdog.accept_command(time.monotonic()):
+      if not self._command_watchdog.accept_command(command_time):
         return
       self._arm_controller.command_torques(efforts)
 
@@ -586,7 +595,6 @@ class PiperControlNode(Node):
   ) -> std_srvs.Trigger.Response:
     del request
 
-    self._command_watchdog.disarm()
     try:
       self._arm_controller.stop()
       self._gripper_controller.stop()
@@ -600,7 +608,7 @@ class PiperControlNode(Node):
 
       self._arm_controller.start()
       self._gripper_controller.start()
-      self._command_watchdog.arm(time.monotonic())
+      self._command_watchdog.restart(time.monotonic())
 
       response.success = True
       response.message = "Robot reset."
