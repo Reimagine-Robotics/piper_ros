@@ -16,7 +16,11 @@ from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
 from piper_control_ros2 import get_metadata
-from piper_control_ros2.piper_control_node import JOINT_NAMES, JointCommand
+from piper_control_ros2.piper_control_node import (
+    _CONTROL_QOS,
+    JOINT_NAMES,
+    JointCommand,
+)
 
 
 def always_succeed_response(msg: str) -> None:
@@ -65,26 +69,26 @@ class PiperMockedNode(Node):
     self.joint_state_pub = self.create_publisher(
         sensor_msgs.JointState,
         f"{self.namespace}/joint_states",
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
     self.joint_command_sub = self.create_subscription(
         std_msgs.Float64MultiArray,
         f"{self.namespace}/joint_commands",
         self.joint_cmd_callback,
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
 
     # Gripper control
     self.gripper_state_pub = self.create_publisher(
         sensor_msgs.JointState,
         f"{self.namespace}/gripper_state",
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
     self.gripper_command_sub = self.create_subscription(
         sensor_msgs.JointState,
         f"{self.namespace}/gripper_command",
         self.gripper_cmd_callback,
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
 
     # Service servers

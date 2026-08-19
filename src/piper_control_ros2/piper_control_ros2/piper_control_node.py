@@ -18,12 +18,24 @@ import rclpy
 from piper_control import piper_connect, piper_control, piper_init, piper_interface
 from rclpy import logging
 from rclpy.node import Node
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs import msg as sensor_msgs
 from std_msgs import msg as std_msgs
 from std_srvs import srv as std_srvs
 
 from piper_control_ros2 import get_metadata
 from piper_control_ros2.teach_mode import teach_mode
+
+# QoS for the high-rate joint/gripper control streams. BEST_EFFORT + KEEP_LAST
+# depth 1: over a lossy/wireless link the freshest sample must win. RELIABLE
+# retransmits a dropped packet and head-of-line-blocks newer samples, which
+# stalls a 200 Hz control loop and shows up as arm jitter. Subscribers on the
+# other end (r2 ArmsUpdater) must match this reliability or no data flows.
+_CONTROL_QOS = QoSProfile(
+    reliability=QoSReliabilityPolicy.BEST_EFFORT,
+    history=QoSHistoryPolicy.KEEP_LAST,
+    depth=1,
+)
 
 JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
 
@@ -201,26 +213,26 @@ class PiperControlNode(Node):
     self.joint_state_pub = self.create_publisher(
         sensor_msgs.JointState,
         f"{self.namespace}/joint_states",
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
     self.joint_command_sub = self.create_subscription(
         std_msgs.Float64MultiArray,
         f"{self.namespace}/joint_commands",
         self.joint_cmd_callback,
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
 
     # Gripper control
     self.gripper_state_pub = self.create_publisher(
         sensor_msgs.JointState,
         f"{self.namespace}/gripper_state",
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
     self.gripper_command_sub = self.create_subscription(
         sensor_msgs.JointState,
         f"{self.namespace}/gripper_command",
         self.gripper_cmd_callback,
-        qos_profile=10,
+        qos_profile=_CONTROL_QOS,
     )
 
     # Service servers
